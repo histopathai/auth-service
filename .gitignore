@@ -39,12 +39,17 @@ dist/
 # Coverage results
 coverage.out
 
-# Module cache (only if you're vendoring manually or using go mod vendor)
-pkg/
+# --- START: Specific rules for pkg/ directory ---
+# Ignore everything inside pkg/
+pkg/**
 
-# EXCEPT for the models subdirectory within pkg
+# BUT, do NOT ignore the pkg/models/ directory itself
 !pkg/models/
-!pkg/models/*
+
+# And do NOT ignore any files or directories directly inside pkg/models/
+!pkg/models/**
+# --- END: Specific rules for pkg/ directory ---
+
 
 
 # Local env files (if used)
