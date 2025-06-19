@@ -1,0 +1,50 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output of the go build command
+*.out
+
+# Test binary, coverage reports
+*.test
+*.coverprofile
+
+# Dependency directories (note: if you’re using Go modules, you might want to keep vendor/)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Build artifacts
+bin/
+build/
+dist/
+
+# Coverage results
+coverage.out
+
+# Module cache (only if you're vendoring manually or using go mod vendor)
+pkg/
+
+# Local env files (if used)
+.env
+.env.*
+
+# Temporary files
+*.tmp
