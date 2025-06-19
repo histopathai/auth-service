@@ -42,6 +42,11 @@ coverage.out
 # Module cache (only if you're vendoring manually or using go mod vendor)
 pkg/
 
+# EXCEPT for the models subdirectory within pkg
+!pkg/models/
+!pkg/models/*
+
+
 # Local env files (if used)
 .env
 .env.*
