@@ -12,7 +12,6 @@ import (
 
 	"github.com/histopathai/auth-service/internal/adapters"
 	"github.com/histopathai/auth-service/internal/api"
-	"github.com/histopathai/auth-service/internal/repository"
 	"github.com/histopathai/auth-service/internal/service"
 )
 
@@ -44,8 +43,7 @@ func main() {
 
 	authClientAdapter := adapters.NewFirebaseAuthClient(fbAuthClient, adapters.FirebaseAuthConfig{})
 
-	userRepo := repository.NewFirestoreUserRepository(firestoreClient)
-
+	userRepo := adapters.NewFirestoreUserRepository(firestoreClient)
 	authService := service.NewAuthService(authClientAdapter, userRepo)
 	authHandler := api.NewAuthHandler(authService)
 
