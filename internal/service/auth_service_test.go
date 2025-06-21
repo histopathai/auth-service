@@ -292,3 +292,174 @@ func TestAuthService_UpdateUserRole(t *testing.T) {
 	})
 
 }
+
+func TestAuthService_DeleteUser(t *testing.T) {
+	setupTest := func() (*adapter.MockAuthClient, *MockUserRepository, service.AuthService, context.Context) {
+		mockAuthClient := adapter.NewMockAuthClient(adapter.MockAuthClientConfig{})
+		mockUserRepo := new(MockUserRepository)
+		authService := service.NewAuthService(mockAuthClient, mockUserRepo)
+		ctx := context.Background()
+		return mockAuthClient, mockUserRepo, authService, ctx
+	}
+
+	uid := "user-to-delete"
+
+	t.Run("successful user deletion", func(t *testing.T) {
+		mockAuthClient, mockUserRepo, authService, ctx := setupTest()
+
+		// Mock AuthClient.DeleteUser call
+		mockAuthClient.On("DeleteUser", ctx, uid).
+			Return(nil).
+			Once()
+
+		// Mock UserRepository.DeleteUser call
+		mockUserRepo.On("DeleteUser", ctx, uid).
+			Return(nil).
+			Once()
+
+		err := authService.DeleteUser(ctx, uid)
+		assert.NoError(t, err)
+		mockAuthClient.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("auth provider deletion fails", func(t *testing.T) {
+		mockAuthClient, mockUserRepo, authService, ctx := setupTest()
+
+		// Mock AuthClient.DeleteUser to return an error
+		mockAuthClient.On("DeleteUser", ctx, uid).
+			Return(errors.New("auth provider error")).
+			Once()
+
+		err := authService.DeleteUser(ctx, uid)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to delete user from auth provider: auth provider error")
+		mockAuthClient.AssertExpectations(t)
+		mockUserRepo.AssertNotCalled(t, "DeleteUser", mock.Anything, mock.Anything)
+	})
+
+	t.Run("user repository deletion fails", func(t *testing.T) {
+		mockAuthClient, mockUserRepo, authService, ctx := setupTest()
+
+		// Mock AuthClient.DeleteUser to succeed
+		mockAuthClient.On("DeleteUser", ctx, uid).
+			Return(nil).
+			Once()
+
+		// Mock UserRepository.DeleteUser to return an error
+		mockUserRepo.On("DeleteUser", ctx, uid).
+			Return(errors.New("repository error")).
+			Once()
+
+		err := authService.DeleteUser(ctx, uid)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to delete user from repository: repository error")
+		mockAuthClient.AssertExpectations(t)
+		mockUserRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuthService_ListUsers(t *testing.T) {
+	setupTest := func() (*adapter.MockAuthClient, *MockUserRepository, service.AuthService, context.Context) {
+		mockAuthClient := adapter.NewMockAuthClient(adapter.MockAuthClientConfig{})
+		mockUserRepo := new(MockUserRepository)
+		authService := service.NewAuthService(mockAuthClient, mockUserRepo)
+		ctx := context.Background()
+		return mockAuthClient, mockUserRepo, authService, ctx
+	}
+
+	expectedUsers := []*models.User{
+		{UID: "u1", Email: "u1@example.com", DisplayName: "User One", Role: "viewer", IsActive: true},
+		{UID: "u2", Email: "u2@example.com", DisplayName: "User Two", Role: "admin", IsActive: true},
+	}
+
+	t.Run("successful user listing", func(t *testing.T) {
+		_, mockUserRepo, authService, ctx := setupTest()
+
+		// Mock UserRepository.ListUsers call
+		mockUserRepo.On("ListUsers", ctx).
+			Return(expectedUsers, nil).
+			Once()
+
+		users, err := authService.ListUsers(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedUsers, users)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("repository listing fails", func(t *testing.T) {
+		_, mockUserRepo, authService, ctx := setupTest()
+
+		// Mock UserRepository.ListUsers to return an error
+		mockUserRepo.On("ListUsers", ctx).
+			Return(nil, errors.New("repository error")).
+			Once()
+
+		users, err := authService.ListUsers(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, users)
+		assert.Contains(t, err.Error(), "failed to list users: repository error")
+		mockUserRepo.AssertExpectations(t)
+	})
+
+}
+
+func TestAuthService_ActivateUser(t *testing.T) {
+	mockAuthClient := adapter.NewMockAuthClient(adapter.MockAuthClientConfig{})
+	mockUserRepo := new(MockUserRepository)
+	authService := service.NewAuthService(mockAuthClient, mockUserRepo)
+	ctx := context.Background()
+
+	uid := "user-to-activate"
+
+	t.Run("successful user activation", func(t *testing.T) {
+		// Mock UpdateUser with expected updates including IsActive=true and UpdatedAt
+		mockUserRepo.On("UpdateUser", ctx, uid, mock.IsType(map[string]interface{}{
+			"IsActive":  true,
+			"UpdatedAt": mock.AnythingOfType("time.Time"), // Check for time.Time type
+		})).Return(nil).Once()
+
+		err := authService.ActivateUser(ctx, uid)
+		assert.NoError(t, err)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("repository activation fails", func(t *testing.T) {
+		mockUserRepo.On("UpdateUser", ctx, uid, mock.AnythingOfType("map[string]interface {}")).Return(errors.New("db error")).Once()
+
+		err := authService.ActivateUser(ctx, uid)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to activate user: db error")
+		mockUserRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuthService_DeactivateUser(t *testing.T) {
+	mockAuthClient := adapter.NewMockAuthClient(adapter.MockAuthClientConfig{})
+	mockUserRepo := new(MockUserRepository)
+	authService := service.NewAuthService(mockAuthClient, mockUserRepo)
+	ctx := context.Background()
+
+	uid := "user-to-deactivate"
+
+	t.Run("successful user deactivation", func(t *testing.T) {
+		// Mock UpdateUser with expected updates including IsActive=false and UpdatedAt
+		mockUserRepo.On("UpdateUser", ctx, uid, mock.IsType(map[string]interface{}{
+			"IsActive":  false,
+			"UpdatedAt": mock.AnythingOfType("time.Time"), // Check for time.Time type
+		})).Return(nil).Once()
+
+		err := authService.DeactivateUser(ctx, uid)
+		assert.NoError(t, err)
+		mockUserRepo.AssertExpectations(t)
+	})
+
+	t.Run("repository deactivation fails", func(t *testing.T) {
+		mockUserRepo.On("UpdateUser", ctx, uid, mock.AnythingOfType("map[string]interface {}")).Return(errors.New("db error")).Once()
+
+		err := authService.DeactivateUser(ctx, uid)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to deactivate user: db error")
+		mockUserRepo.AssertExpectations(t)
+	})
+}
