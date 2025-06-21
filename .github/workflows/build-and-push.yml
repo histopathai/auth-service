@@ -1,23 +1,23 @@
-# .github/workflows/build-and-push.yml
-name: Build and Push Docker Image to GCR
+name: Build and Push Docker Image to Artifact Registry
 
 on:
   push:
     branches:
-      - main # main branch'ine yapılan push'larda tetiklenir
-  workflow_dispatch: # Manuel olarak da tetiklenebilir
+      - main
+  workflow_dispatch:
 
 env:
   PROJECT_ID: medical-image-annotator
   SERVICE_NAME: auth-service 
-  REGION: europe-west3 
+  REGION: europe-west3
+  REPO_NAME: docker-repo
 
 jobs:
   build-image:
     runs-on: ubuntu-latest
     permissions:
       contents: 'read'
-      id-token: 'write' 
+      id-token: 'write'
 
     steps:
     - name: Checkout repository
@@ -32,22 +32,17 @@ jobs:
       id: 'auth'
       uses: 'google-github-actions/auth@v2'
       with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}' 
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
     - name: Set up Cloud SDK
       uses: 'google-github-actions/setup-gcloud@v2'
 
-    - name: Configure Docker to use gcloud as a credential helper
-      run: gcloud auth configure-docker --quiet
-
-    - name: Build and push Docker image to Google Container Registry
+    - name: Configure Docker to use Artifact Registry as credential helper
       run: |
-        # Dockerfile'ınızın Go uygulamanızın ana paketini doğru bir şekilde işaret ettiğinden emin olun.
-        # Örneğin: RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./cmd/auth-service/main.go
-        docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA . # GITHUB_SHA ile benzersiz bir etiketleme
-        docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
     - name: Build and push Docker image to Artifact Registry
       run: |
-          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:$GITHUB_SHA"
-          docker build -t $IMAGE_URI .
-          docker push $IMAGE_URI
+        IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:$GITHUB_SHA"
+        docker build -t $IMAGE_URI .
+        docker push $IMAGE_URI
