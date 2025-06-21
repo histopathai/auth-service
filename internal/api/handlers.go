@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/service"
-	"github.com/histopathai/auth-service/pkg/models"
 )
 
 // Handler struct holds dependencies
@@ -16,7 +16,7 @@ type AuthHandler struct {
 	AuthService service.AuthService
 }
 
-// NewAuthHandler creates a new AuthHandler
+// New AuthHandler creates a new AuthHandler instance
 func NewAuthHandler(authService service.AuthService) *AuthHandler {
 	return &AuthHandler{
 		AuthService: authService,
@@ -33,75 +33,60 @@ func (h *AuthHandler) AuthMiddleware() gin.HandlerFunc {
 		}
 
 		idToken := strings.TrimPrefix(authHeader, "Bearer ")
-		if idToken == authHeader { // No "Bearer " prefix found
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
-			return
-		}
 
-		token, err := h.AuthService.VerifyIDToken(c.Request.Context(), idToken)
+		// VerifyIDToken expects TokenClaims
+		tokenClaims, err := h.AuthService.VerifyIDToken(c.Request.Context(), idToken)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("Invalid token or expired: %v", err)})
 			return
 		}
 
-		// Add UID and the other information to the context
-		c.Set("userId", token.UID)
-		if emails, ok := token.Firebase.Identities["email"].([]interface{}); ok && len(emails) > 0 {
-			if email, ok := emails[0].(string); ok {
-				c.Set("userEmail", email)
-			}
-		}
-
-		// check role
-		if role, ok := token.Claims["role"].(string); ok {
-			c.Set("userRole", role)
-		} else {
-			c.Set("userRole", "unknown")
-		}
+		// Add UID and the other information from models. TokenClaims to the context
+		c.Set("userId", tokenClaims.UID)
+		c.Set("userEmail", tokenClaims.Email)
+		c.Set("userRole", tokenClaims.Role)
+		c.Set("isEmailVerified", tokenClaims.IsEmailVerified)
 
 		c.Next()
-
 	}
 }
 
 // AdminAuthMiddleware (admin-only)
 func (h *AuthHandler) AdminAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Check if the user has admin role
 		role, exists := c.Get("userRole")
-		if !exists || fmt.Sprintf("%v", role) != "admin" {
+		if !exists || role != "admin" {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
 			return
 		}
-
 		c.Next()
 	}
 }
 
-// HandleUserCreation (admin only)
+// HandleUserCreation (admin-only)
 func (h *AuthHandler) HandleUserCreation(c *gin.Context) {
 	var req models.UserCreateRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Validate role before sending to service (e.g., must be patolog, admin or viewer)
-
 	if !models.ValidRoles[req.Role] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role specified"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid role: %s", req.Role)})
 		return
 	}
 
 	user, err := h.AuthService.CreateUser(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create user: %v", err)})
 		return
 	}
-
 	c.JSON(http.StatusCreated, gin.H{"message": "User created successfully", "user": user})
 }
 
-// HandleUpdateUserRole (admin only)
+// HandleUpdateUserRole (admin-only)
 func (h *AuthHandler) HandleUpdateUserRole(c *gin.Context) {
 	uid := c.Param("uid")
 
