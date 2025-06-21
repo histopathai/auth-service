@@ -10,7 +10,7 @@ env:
   PROJECT_ID: medical-image-annotator
   SERVICE_NAME: auth-service 
   REGION: europe-west3
-  REPO_NAME: docker-repo
+  REPO_NAME: auth-service  # Artifact Registry'deki gerçek repo adı
 
 jobs:
   build-image:
@@ -28,14 +28,14 @@ jobs:
       with:
         go-version: '1.22'
 
-    - name: Authenticate to GCP
-      id: 'auth'
-      uses: 'google-github-actions/auth@v2'
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
       with:
         credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Set up Cloud SDK
-      uses: 'google-github-actions/setup-gcloud@v2'
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v2
 
     - name: Configure Docker to use Artifact Registry as credential helper
       run: |
@@ -44,5 +44,9 @@ jobs:
     - name: Build and push Docker image to Artifact Registry
       run: |
         IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:$GITHUB_SHA"
+        echo "Image URI: $IMAGE_URI"
         docker build -t $IMAGE_URI .
         docker push $IMAGE_URI
+
+    - name: Store image URI for later steps
+      run: echo "IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:$GITHUB_SHA" >> $GITHUB_ENV
