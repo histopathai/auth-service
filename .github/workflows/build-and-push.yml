@@ -46,7 +46,8 @@ jobs:
         docker build -t gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA . # GITHUB_SHA ile benzersiz bir etiketleme
         docker push gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA
 
-    - name: Store image tag for later deployment
-      # Bir sonraki manuel dağıtım adımında kullanılmak üzere imaj etiketini bir artefakt olarak kaydederiz.
-      # Veya doğrudan Cloud Run'a manuel dağıtım komutunda GITHUB_SHA kullanabiliriz.
-      run: echo "IMAGE_TAG=gcr.io/$PROJECT_ID/$SERVICE_NAME:$GITHUB_SHA" >> $GITHUB_ENV
+    - name: Build and push Docker image to Artifact Registry
+      run: |
+          IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:$GITHUB_SHA"
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
