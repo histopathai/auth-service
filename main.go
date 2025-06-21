@@ -19,22 +19,29 @@ func main() {
 
 	ctx := context.Background()
 
+	// Initialize Firebase app
+	var firebaseApp *firebase.App
+	var err error
+
 	serviceAccountKeyPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
-	if serviceAccountKeyPath == "" {
-		log.Fatal("GOOGLE_APPLICATION_CREDENTIALS environment variable not set.")
+	if serviceAccountKeyPath != "" {
+
+		opt := option.WithCredentialsFile(serviceAccountKeyPath)
+		firebaseApp, err = firebase.NewApp(ctx, nil, opt)
+	} else {
+
+		firebaseApp, err = firebase.NewApp(ctx, nil)
 	}
-	opt := option.WithCredentialsFile(serviceAccountKeyPath)
-	app, err := firebase.NewApp(ctx, nil, opt)
+
 	if err != nil {
 		log.Fatalf("error initializing Firebase app: %v", err)
 	}
 
-	fbAuthClient, err := app.Auth(ctx)
+	fbAuthClient, err := firebaseApp.Auth(ctx)
 	if err != nil {
 		log.Fatalf("error getting Firebase Auth client: %v", err)
 	}
 
-	// Initialize Firestore client
 	firestoreClient, err := firestore.NewClient(ctx, os.Getenv("GCP_PROJECT_ID"))
 	if err != nil {
 		log.Fatalf("error creating Firestore client: %v", err)
@@ -42,9 +49,9 @@ func main() {
 	defer firestoreClient.Close()
 
 	authClientAdapter := adapters.NewFirebaseAuthClient(fbAuthClient, adapters.FirebaseAuthConfig{})
+	userRepoAdapter := adapters.NewFirestoreUserRepository(firestoreClient)
 
-	userRepo := adapters.NewFirestoreUserRepository(firestoreClient)
-	authService := service.NewAuthService(authClientAdapter, userRepo)
+	authService := service.NewAuthService(authClientAdapter, userRepoAdapter)
 	authHandler := api.NewAuthHandler(authService)
 
 	router := gin.Default()
@@ -53,7 +60,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Default port if not set
+		port = "8080"
 	}
 	log.Printf("Starting server on port %s", port)
 	if err := router.Run(":" + port); err != nil {
