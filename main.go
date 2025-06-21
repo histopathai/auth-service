@@ -10,15 +10,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/option"
 
+	"github.com/histopathai/auth-service/internal/adapter"
 	"github.com/histopathai/auth-service/internal/api"
 	"github.com/histopathai/auth-service/internal/repository"
 	"github.com/histopathai/auth-service/internal/service"
 )
 
 func main() {
+
 	ctx := context.Background()
 
-	// Read the service account key path from environment variable
 	serviceAccountKeyPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	if serviceAccountKeyPath == "" {
 		log.Fatal("GOOGLE_APPLICATION_CREDENTIALS environment variable not set.")
@@ -29,37 +30,35 @@ func main() {
 		log.Fatalf("error initializing Firebase app: %v", err)
 	}
 
-	// Get Firebase Auth Client
-	authClient, err := app.Auth(ctx)
+	fbAuthClient, err := app.Auth(ctx)
 	if err != nil {
 		log.Fatalf("error getting Firebase Auth client: %v", err)
 	}
 
-	// Get Firestore Client
+	// Initialize Firestore client
 	firestoreClient, err := firestore.NewClient(ctx, os.Getenv("GCP_PROJECT_ID"))
 	if err != nil {
-		log.Fatalf("error getting Firestore client: %v", err)
+		log.Fatalf("error creating Firestore client: %v", err)
 	}
 	defer firestoreClient.Close()
 
-	// Inject dependencies and create services
+	authClientAdapter := adapter.NewFirebaseAuthClient(fbAuthClient, adapter.FirebaseAuthConfig{})
+
 	userRepo := repository.NewFirestoreUserRepository(firestoreClient)
-	authService := service.NewAuthService(authClient, userRepo)
+
+	authService := service.NewAuthService(authClientAdapter, userRepo)
 	authHandler := api.NewAuthHandler(authService)
 
-	// Create Gin router
 	router := gin.Default()
 
-	// Setup API routes
 	api.SetupAuthRoutes(router, authHandler)
 
-	// Start the server
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Cloud Run listens on 8080 by default
+		port = "8080" // Default port if not set
 	}
-	log.Printf("Auth Service starting on port %s...", port)
+	log.Printf("Starting server on port %s", port)
 	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Auth Service failed to start: %v", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
