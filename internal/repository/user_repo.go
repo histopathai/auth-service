@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/histopathai/auth-service/pkg/models"
+	"github.com/histopathai/auth-service/internal/models"
 	"google.golang.org/api/iterator"
 )
 
