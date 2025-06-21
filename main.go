@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/option"
 
-	"github.com/histopathai/auth-service/internal/adapter"
+	"github.com/histopathai/auth-service/internal/adapters"
 	"github.com/histopathai/auth-service/internal/api"
 	"github.com/histopathai/auth-service/internal/repository"
 	"github.com/histopathai/auth-service/internal/service"
@@ -42,7 +42,7 @@ func main() {
 	}
 	defer firestoreClient.Close()
 
-	authClientAdapter := adapter.NewFirebaseAuthClient(fbAuthClient, adapter.FirebaseAuthConfig{})
+	authClientAdapter := adapters.NewFirebaseAuthClient(fbAuthClient, adapters.FirebaseAuthConfig{})
 
 	userRepo := repository.NewFirestoreUserRepository(firestoreClient)
 
