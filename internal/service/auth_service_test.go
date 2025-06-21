@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/histopathai/auth-service/internal/adapter"
+	adapter "github.com/histopathai/auth-service/internal/adapters"
 	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/service"
 )
