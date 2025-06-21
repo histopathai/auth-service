@@ -4,112 +4,114 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
-	"firebase.google.com/go/v4/auth"
+	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/repository"
-	"github.com/histopathai/auth-service/pkg/models"
 )
 
 // AuthService defines the interface for authentication and user management operations.
 type AuthService interface {
-	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
+	VerifyIDToken(ctx context.Context, idToken string) (*models.TokenClaims, error)
 	CreateUser(ctx context.Context, req *models.UserCreateRequest) (*models.User, error)
-	UpdateUserRole(ctx context.Context, uid string, newRole string) error
+	UpdateUserRole(ctx context.Context, uid string, role string) error
 	DeleteUser(ctx context.Context, uid string) error
-	ListUsers(ctx context.Context) ([]*models.User, error)
 	ActivateUser(ctx context.Context, uid string) error
 	DeactivateUser(ctx context.Context, uid string) error
+	ListUsers(ctx context.Context) ([]*models.User, error)
 }
 
 type authService struct {
-	firebaseAuth *auth.Client
-	userRepo     repository.UserRepository
+	authClient AuthClient                // Interface authorizing operations
+	userRepo   repository.UserRepository // Interface for user data operations
 }
 
 // NewAuthService creates a new AuthService instance.
-func NewAuthService(fbAuth *auth.Client, repo repository.UserRepository) AuthService {
-	return &authService{firebaseAuth: fbAuth, userRepo: repo}
+func NewAuthService(authClient AuthClient, userRepo repository.UserRepository) AuthService {
+	return &authService{authClient: authClient, userRepo: userRepo}
 }
 
-// VerifyIDToken verifies a Firebase ID Token
-func (s *authService) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
-	// Remove "Bearer " prefix if present
+// VerifyIDToken verifies an ID Token using the abstract AuthClient interface.
+func (s *authService) VerifyIDToken(ctx context.Context, idToken string) (*models.TokenClaims, error) {
+	// 1 Remove "Bearer " prefix if present
 	idToken = strings.TrimPrefix(idToken, "Bearer ")
-
-	token, err := s.firebaseAuth.VerifyIDToken(ctx, idToken)
+	if idToken == "" {
+		return nil, fmt.Errorf("ID token is required")
+	}
+	// 2 Call the AuthClient's VerifyIDToken method
+	tokenClaims, err := s.authClient.VerifyIDToken(ctx, idToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify ID token: %w", err)
 	}
-	return token, nil
+
+	return tokenClaims, nil
 }
 
-// Createuser creates a new user in Firebase Auth and FireStore
+// CreateUser creates a new user in the auth provider and stores profile in the user repository.
 func (s *authService) CreateUser(ctx context.Context, req *models.UserCreateRequest) (*models.User, error) {
 
-	//1. Create user in Firebase Authentication
-	params := (&auth.UserToCreate{}).
-		Email(req.Email).
-		Password(req.Password).
-		DisplayName(req.DisplayName).
-		EmailVerified(false) // E-mail verification can be handled later
-
-	userRecord, err := s.firebaseAuth.CreateUser(ctx, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create user in Firebase: %w", err)
+	// 1. Create user in Auth provider using the abstract Authclient
+	authClientReq := &AuthClientCreateUserRequest{
+		Email:       req.Email,
+		Password:    req.Password,
+		DisplayName: req.DisplayName,
 	}
 
-	// 2. Save user role and profile to Firestore
+	userRecord, err := s.authClient.CreateUser(ctx, authClientReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user in auth provider: %w", err)
+	}
+
+	// 2. Save user role and profile to the user repository
 	newUser := &models.User{
 		UID:         userRecord.UID,
-		Email:       req.Email,
-		DisplayName: req.DisplayName,
-		Role:        req.Role, // Should be assigned by admin or system
+		Email:       userRecord.Email,
+		DisplayName: userRecord.DisplayName,
+		Role:        req.Role,
 		Institution: req.Institution,
-		IsActive:    false, // Default to false, can be activated later by admin
+		IsActive:    false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
 	if err := s.userRepo.CreateUser(ctx, newUser); err != nil {
-		// if Firestore fails, delete the user from Firebase
-		s.firebaseAuth.DeleteUser(ctx, userRecord.UID) //Rollback
-		return nil, fmt.Errorf("failed to create user in Firestore: %w", err)
+		s.authClient.DeleteUser(ctx, userRecord.UID) // Clean up if user creation fails
+		return nil, fmt.Errorf("failed to create user profile: %w", err)
 	}
 	return newUser, nil
 }
 
-// UpdateUserRole updates a user's role in Firestore.
-// This typically requires admin privileges.
-func (s *authService) UpdateUserRole(ctx context.Context, uid string, newRole string) error {
-	// Validate the new role (e.g., "admin", "viewer", etc.)
-	if !models.ValidRoles[newRole] {
-		return fmt.Errorf("invalid role specified: %s", newRole)
+// UpdateUserRole updates a user's role in both the auth provider and the user repository.
+func (s *authService) UpdateUserRole(ctx context.Context, uid string, role string) error {
+	if !models.ValidRoles[role] {
+		return fmt.Errorf("invalid role: %s", role)
 	}
 
 	updates := map[string]interface{}{
-		"Role": newRole,
+		"Role": role,
 	}
 
 	if err := s.userRepo.UpdateUser(ctx, uid, updates); err != nil {
-		return fmt.Errorf("failed to update user role: %w", err)
+		return fmt.Errorf("failed to update user role in repository: %w", err)
 	}
+
 	return nil
 }
 
-// DeleteUser deletes a user from Firebase Auth and Firestore.
+// DeleteUser deletes a user from the auth  provider and the user repository.
 func (s *authService) DeleteUser(ctx context.Context, uid string) error {
-	// 1. Delete user from Firebase Authentication
-	if err := s.firebaseAuth.DeleteUser(ctx, uid); err != nil {
-		return fmt.Errorf("failed to delete user from Firebase: %w", err)
+	// 1. Delete user from Auth provider
+	if err := s.authClient.DeleteUser(ctx, uid); err != nil {
+		return fmt.Errorf("failed to delete user from auth provider: %w", err)
 	}
-
-	// 2. Delete user from Firestore
+	// 2. Delete user from repository
 	if err := s.userRepo.DeleteUser(ctx, uid); err != nil {
-		return fmt.Errorf("failed to delete user from Firestore: %w", err)
+		return fmt.Errorf("failed to delete user from repository: %w", err)
 	}
-
 	return nil
 }
 
-// ListUsers retrieves all users from Firestore.
+// ListUsers retrieves all users from the user repository.
 func (s *authService) ListUsers(ctx context.Context) ([]*models.User, error) {
 	users, err := s.userRepo.ListUsers(ctx)
 	if err != nil {
@@ -118,10 +120,11 @@ func (s *authService) ListUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-// ActivateUser activates a user by setting IsActive to true.
+// ActivateUser activates a user by setting IsActive to true in the user repository.
 func (s *authService) ActivateUser(ctx context.Context, uid string) error {
 	updates := map[string]interface{}{
-		"IsActive": true,
+		"IsActive":  true,
+		"UpdatedAt": time.Now(),
 	}
 
 	if err := s.userRepo.UpdateUser(ctx, uid, updates); err != nil {
@@ -130,10 +133,11 @@ func (s *authService) ActivateUser(ctx context.Context, uid string) error {
 	return nil
 }
 
-// DeactivateUser deactivates a user by setting IsActive to false.
+// DeactivateUser deactivates a user by setting IsActive to false in the user repository.
 func (s *authService) DeactivateUser(ctx context.Context, uid string) error {
 	updates := map[string]interface{}{
-		"IsActive": false,
+		"IsActive":  false,
+		"UpdatedAt": time.Now(),
 	}
 
 	if err := s.userRepo.UpdateUser(ctx, uid, updates); err != nil {
