@@ -1,5 +1,5 @@
 # Stage 1: Build the Go application
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23.2-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -18,7 +18,7 @@ COPY . .
 # CGO_ENABLED=0  is important static binaries when using alpine base image
 # -a -installsuffix cgo reduces the image size
 # -o authservice specifies the output executable name
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./cmd/auth-service/main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./main.go
 
 
 # Stage 2: Create the final image
