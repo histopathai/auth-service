@@ -12,15 +12,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// UserRepository defines the interface for user data operations.
-type UserRepository interface {
-	GetUserByUID(ctx context.Context, uid string) (*models.User, error)
-	CreateUser(ctx context.Context, user *models.User) error
-	UpdateUser(ctx context.Context, uid string, updates map[string]interface{}) error
-	DeleteUser(ctx context.Context, uid string) error
-	ListUsers(ctx context.Context) ([]*models.User, error)
-}
-
 // firestoreUserRepository implements UserRepository for Firestore.
 type firestoreUserRepository struct {
 	client *firestore.Client
