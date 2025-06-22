@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: medical-image-annotator
+  PROJECT_ID: my-auth-service-463707
   SERVICE_NAME: auth-service 
   REGION: europe-west3
   REPO_NAME: auth-service  # Artifact Registry'deki gerçek repo adı
