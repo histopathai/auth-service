@@ -18,7 +18,7 @@ COPY . .
 # CGO_ENABLED=0  is important static binaries when using alpine base image
 # -a -installsuffix cgo reduces the image size
 # -o authservice specifies the output executable name
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./main.go
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./cmd/main.go
 
 
 # Stage 2: Create the final image
