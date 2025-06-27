@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/histopathai/auth-service/config"
 	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/repository"
 	"google.golang.org/api/iterator"
+	// option paketini import edin
 )
 
 // Ensure FirestoreAdapter implements UserRepository interface
@@ -22,16 +22,11 @@ type FirestoreAdapter struct {
 }
 
 // NewFirestoreAdapter creates a new FirestoreAdapter instance.
-func NewFirestoreAdapter(cfg config.FirestoreConfig) (*FirestoreAdapter, error) {
-	ctx := context.Background()
-	client, err := firestore.NewClient(ctx, cfg.ProjectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Firestore client: %w", err)
-	}
+func NewFirestoreAdapter(userClient *firestore.Client, userCollection string) (*FirestoreAdapter, error) {
 
 	return &FirestoreAdapter{
-		client:     client,
-		collection: client.Collection(cfg.UsersCollection),
+		client:     userClient,
+		collection: userClient.Collection(userCollection),
 	}, nil
 }
 
