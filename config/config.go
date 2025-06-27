@@ -25,12 +25,14 @@ type ServerConfig struct {
 type FirebaseConfig struct {
 	ProjectID         string `json:"project_id"`
 	ServiceAccountKey string `json:"service_account_key"`
+	AuthEmulatorHost  string `mapstructure:"FIREBASE_AUTH_EMULATOR_HOST"`
 }
 
 // FirestoreConfig holds Firestore-related configurations
 type FirestoreConfig struct {
 	UsersCollection string `json:"users_collection"`
-	ProjectID       string `json:"project_id"` // Optional, can be used for Firestore client initialization
+	ProjectID       string `json:"project_id"`    // Optional, can be used for Firestore client initialization
+	EmulatorHost    string `json:"emulator_host"` // Optional, can be used to connect to Firestore emulator
 }
 
 // SMPTConfig holds SMTP server configurations
@@ -52,8 +54,7 @@ func LoadConfig() (*Config, error) {
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
 		},
 		Firebase: FirebaseConfig{
-			ProjectID:         getEnv("FIREBASE_PROJECT_ID", "your-project-id"),
-			ServiceAccountKey: getEnv("FIREBASE_SERVICE_ACCOUNT_KEY", "path/to/serviceAccountKey.json"),
+			ProjectID: getEnv("FIREBASE_PROJECT_ID", "your-project-id"),
 		},
 		Firestore: FirestoreConfig{
 			UsersCollection: getEnv("FIRESTORE_USERS_COLLECTION", "users"),
