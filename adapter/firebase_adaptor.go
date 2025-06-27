@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
-	"github.com/histopathai/auth-service/config"
 	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/repository"
-	"google.golang.org/api/option"
 )
 
 var _ repository.AuthRepository = &FirebaseAuthAdapter{}
@@ -20,24 +17,10 @@ type FirebaseAuthAdapter struct {
 }
 
 // NewFirebaseAdapter creates a new FirebaseAdapter instance.
-func NewFirebaseAuthAdapter(config config.FirebaseConfig) (*FirebaseAuthAdapter, error) {
-	ctx := context.Background()
-
-	//Initialize Firebase app
-	opt := option.WithCredentialsJSON([]byte(config.ServiceAccountKey))
-	app, err := firebase.NewApp(ctx, nil, opt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Firebase app: %w", err)
-	}
-
-	// Get Firebase Auth client
-	client, err := app.Auth(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Firebase Auth client: %w", err)
-	}
+func NewFirebaseAuthAdapter(authClient *auth.Client) (*FirebaseAuthAdapter, error) {
 
 	return &FirebaseAuthAdapter{
-		client: client,
+		client: authClient,
 	}, nil
 }
 
