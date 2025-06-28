@@ -79,30 +79,6 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 	})
 }
 
-// InitatePasswordReset handles password reset initiation
-func (h *AuthHandler) InitiatePasswordReset(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "invalid_request",
-			"message": "User ID is required",
-		})
-		return
-	}
-	err := h.authService.InitiatePasswordReset(c.Request.Context(), uid)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "password_reset_failed",
-			"message": "Failed to initiate password reset",
-			"details": err.Error(),
-		})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Password reset initiated successfully",
-	})
-}
-
 // ChangePassword handles password change
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	type PasswordChangeRequest struct {
