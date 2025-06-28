@@ -47,13 +47,6 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 
 		//Token verification
 		auth.POST("/verify", authHandler.VerifyToken)
-
-		//Password Reset initiation (by UID - requires admin or self)
-		auth.POST("/password-reset/:uid",
-			authMiddleware.RequireAuth(),
-			middleware.SelfOrAdminOnly(),
-			authHandler.InitiatePasswordReset)
-
 	}
 
 	//Protected routes (require authentication)
@@ -93,11 +86,6 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 			// Suspend user account
 			users.POST("/:uid/suspend", adminHandler.SuspendUser)
 
-			// Deactivate user account
-			users.POST("/:uid/deactivate", adminHandler.DeactivateUser)
-
-			// Initiate email verification
-			users.POST("/:uid/verify-email", adminHandler.InitiateEmailVerification)
 		}
 	}
 	return router
