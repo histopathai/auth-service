@@ -86,37 +86,6 @@ func (s *AuthServiceImpl) VerifyToken(ctx context.Context, idToken string) (*mod
 	return user, nil
 }
 
-// InitiatePasswordReset starts the password reset process for a user.
-func (s *AuthServiceImpl) InitiatePasswordReset(ctx context.Context, uid string) error {
-	// 1. Retrieve the user by UID
-	user, err := s.userRepo.GetUserByUID(ctx, uid)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve user: %w", err)
-	}
-
-	// 2. Create a password reset link using Firebase
-	resetLink, err := s.authRepo.CreatePasswordResetLink(ctx, user.Email)
-	if err != nil {
-		return fmt.Errorf("failed to create password reset link: %w", err)
-	}
-
-	subject := "Password Reset Request"
-	body := fmt.Sprintf(`
-		<p>Hi %s,</p>
-		<p>We received a request to reset your password. If you did not make this request, please ignore this email.</p>
-		<p>To reset your password, please click the link below:</p>
-		<p><a href="%s">Reset Password</a></p>
-		<p>If you have any questions, feel free to contact our support team.</p>
-		<p>Best regards,</p>
-		`, user.DisplayName, resetLink)
-
-	// 3. Send the reset link via email
-	if err := s.mailService.SendEmail(ctx, user.Email, subject, body); err != nil {
-		return fmt.Errorf("failed to send password reset email: %w", err)
-	}
-	return nil
-}
-
 // ChangePassword changes the user's password.
 func (s *AuthServiceImpl) ChangePassword(ctx context.Context, uid string, newPassword string) error {
 	// 1. Change the password in Firebase Auth
@@ -142,42 +111,6 @@ func (s *AuthServiceImpl) DeleteUser(ctx context.Context, uid string) error {
 }
 
 // --- Admin-specific operations ---
-
-// InitiateEmailVerification sends a verification email to the user.
-func (s *AuthServiceImpl) InitiateEmailVerification(ctx context.Context, uid string) error {
-	// 1. Retrieve the user by UID
-	user, err := s.userRepo.GetUserByUID(ctx, uid)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve user: %w", err)
-	}
-	// Ensure the user is pending and not already verified
-	if user.Status != models.StatusPending {
-		return fmt.Errorf("user is not pending verification: %s", user.Status)
-	}
-
-	// 2. Create a verification link using Firebase
-	verificationLink, err := s.authRepo.CreateEmailVerificationLink(ctx, user.Email)
-	if err != nil {
-		return fmt.Errorf("failed to create email verification link: %w", err)
-	}
-
-	subject := "Email Verification Required"
-	body := fmt.Sprintf(`
-		<p>Hi %s,</p>
-		<p>Thank you for registering with us. To complete your registration, please verify your email address by clicking the link below:</p>
-		<p><a href="%s">Verify Email</a></p>
-		<p>If you did not register, please ignore this email.</p>
-		<p>Best regards,</p>
-		`, user.DisplayName, verificationLink)
-
-	// 3. Send the verification link via email
-	if err := s.mailService.SendEmail(ctx, user.Email, subject, body); err != nil {
-		return fmt.Errorf("failed to send email verification: %w", err)
-	}
-	return nil
-
-}
-
 // ApproveUser approves a pending user, assigns a role, and sets the approval date.
 func (s *AuthServiceImpl) ApproveUser(ctx context.Context, uid string, role models.UserRole) error {
 	// 1. Retrieve the user by UID
@@ -198,7 +131,7 @@ func (s *AuthServiceImpl) ApproveUser(ctx context.Context, uid string, role mode
 		return fmt.Errorf("failed to approve user: %w", err)
 	}
 
-	return s.InitiateEmailVerification(ctx, uid) // Send verification email
+	return nil
 }
 
 // SuspendUser suspends a user account.
@@ -217,27 +150,6 @@ func (s *AuthServiceImpl) SuspendUser(ctx context.Context, uid string) error {
 	// 3. Update user status to suspended
 	if err := s.userRepo.SetUserRoleAndStatus(ctx, uid, user.Role, models.StatusSuspended, false); err != nil {
 		return fmt.Errorf("failed to suspend user: %w", err)
-	}
-
-	return nil
-}
-
-// DeactivateUser deactivates a user account.
-func (s *AuthServiceImpl) DeactivateUser(ctx context.Context, uid string) error {
-	// 1. Retrieve the user by UID
-	user, err := s.userRepo.GetUserByUID(ctx, uid)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve user: %w", err)
-	}
-
-	// 2. Ensure the user is active or suspended before deactivating
-	if user.Status != models.StatusActive && user.Status != models.StatusSuspended {
-		return fmt.Errorf("user is not active or suspended: %s", user.Status)
-	}
-
-	// 3. Update user status to deactivated
-	if err := s.userRepo.SetUserRoleAndStatus(ctx, uid, user.Role, models.StatusDeactivated, false); err != nil {
-		return fmt.Errorf("failed to deactivate user: %w", err)
 	}
 
 	return nil
@@ -273,9 +185,9 @@ func (s *AuthServiceImpl) ActivateUser(ctx context.Context, uid string) error {
 		return fmt.Errorf("failed to retrieve user: %w", err)
 	}
 
-	// 2. Ensure the user is suspended or deactivated before activating
-	if user.Status != models.StatusSuspended && user.Status != models.StatusDeactivated {
-		return fmt.Errorf("user is not suspended or deactivated: %s", user.Status)
+	// 2. Ensure the user is suspended before activating
+	if user.Status != models.StatusSuspended {
+		return fmt.Errorf("user is not suspended: %s", user.Status)
 	}
 
 	// 3. Update user status to active
