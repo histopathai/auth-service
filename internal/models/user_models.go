@@ -5,10 +5,9 @@ import "time"
 type UserStatus string
 
 const (
-	StatusPending     UserStatus = "pending"
-	StatusActive      UserStatus = "active"
-	StatusSuspended   UserStatus = "suspended"
-	StatusDeactivated UserStatus = "deactivated"
+	StatusPending   UserStatus = "pending"
+	StatusActive    UserStatus = "active"
+	StatusSuspended UserStatus = "suspended"
 )
 
 // User Role
