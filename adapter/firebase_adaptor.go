@@ -68,23 +68,6 @@ func (fa *FirebaseAuthAdapter) VerifyIDToken(ctx context.Context, idToken string
 	return authUser, nil
 }
 
-func (fa *FirebaseAuthAdapter) CreatePasswordResetLink(ctx context.Context, email string) (string, error) {
-	link, err := fa.client.PasswordResetLink(ctx, email)
-
-	if err != nil {
-		return "", fmt.Errorf("failed to create password reset link: %w", err)
-	}
-	return link, nil
-}
-
-func (fa *FirebaseAuthAdapter) CreateEmailVerificationLink(ctx context.Context, email string) (string, error) {
-	link, err := fa.client.EmailVerificationLink(ctx, email)
-	if err != nil {
-		return "", fmt.Errorf("failed to create email verification link: %w", err)
-	}
-	return link, nil
-}
-
 func (fa *FirebaseAuthAdapter) ChangeUserPassword(ctx context.Context, uid, newPassword string) error {
 
 	_, err := fa.client.UpdateUser(ctx, uid, (&auth.UserToUpdate{}).Password(newPassword))
