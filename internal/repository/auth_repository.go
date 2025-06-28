@@ -15,14 +15,6 @@ type AuthRepository interface {
 	// VerifyIDToken verifies the provided ID token and returns user information.
 	VerifyIDToken(ctx context.Context, idToken string) (*models.UserAuthInfo, error)
 
-	// CreatePasswordResetLink creates a password reset link for the given email.
-	// This link needs to be sent by a separate email service.
-	CreatePasswordResetLink(ctx context.Context, email string) (string, error)
-
-	// SendEmailVerification sends a verification email to the user.
-	// Note: Firebase Admin SDK creates the link, actual sending needs a separate email service.
-	CreateEmailVerificationLink(ctx context.Context, email string) (string, error)
-
 	// ChangeUserPassword changes the user's password in Firebase Auth.
 	ChangeUserPassword(ctx context.Context, uid, newPassword string) error
 
