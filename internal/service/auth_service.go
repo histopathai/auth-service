@@ -15,18 +15,13 @@ type AuthService interface {
 	//VerifyToken verifies the provided ID token and returns the associated user.
 	VerifyToken(ctx context.Context, idToken string) (*models.User, error)
 
-	//InitiatePasswordReset starts the password reset process for a user.
-	InitiatePasswordReset(ctx context.Context, uid string) error
-
 	//ChangePassword changes the user's password.
 	ChangePassword(ctx context.Context, uid string, newPassword string) error
 
+	//DeleteUser deletes a user account by their unique identifier.
 	DeleteUser(ctx context.Context, uid string) error
 
 	// --- Admin-specific operations ---
-
-	//InitiateEmailVerification sends a verification email to the user.
-	InitiateEmailVerification(ctx context.Context, uid string) error
 
 	//ApproveUser approves a pending user, assigns a role, and sets the approval date.
 	ApproveUser(ctx context.Context, uid string, role models.UserRole) error
@@ -34,15 +29,12 @@ type AuthService interface {
 	//SuspendUser suspends a user account.
 	SuspendUser(ctx context.Context, uid string) error
 
-	//DeactivateUser deactivates a user account.
-	DeactivateUser(ctx context.Context, uid string) error
+	//ActivateUser activates a user account.
+	ActivateUser(ctx context.Context, uid string) error
 
 	//GetUser retrieves a user by their unique identifier.
 	GetUser(ctx context.Context, uid string) (*models.User, error)
 
 	//GetAllUsers retrieves all users with optional pagination.
 	GetAllUsers(ctx context.Context) ([]*models.User, error)
-
-	//ActivateUser activates a user account.
-	ActivateUser(ctx context.Context, uid string) error
 }
