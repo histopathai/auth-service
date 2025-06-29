@@ -78,11 +78,6 @@ func (s *AuthServiceImpl) VerifyToken(ctx context.Context, idToken string) (*mod
 		return nil, fmt.Errorf("failed to retrieve user profile: %w", err)
 	}
 
-	// 3. Check if the user is active
-	if user.Status != models.StatusActive {
-		return nil, fmt.Errorf("user account is not active: %s", user.Status)
-	}
-
 	return user, nil
 }
 
@@ -90,6 +85,7 @@ func (s *AuthServiceImpl) VerifyToken(ctx context.Context, idToken string) (*mod
 func (s *AuthServiceImpl) ChangePassword(ctx context.Context, uid string, newPassword string) error {
 	// 1. Change the password in Firebase Auth
 	if err := s.authRepo.ChangeUserPassword(ctx, uid, newPassword); err != nil {
+		fmt.Println("Error changing password in Firebase Auth:", err)
 		return fmt.Errorf("failed to change user password: %w", err)
 	}
 	return nil
@@ -120,15 +116,17 @@ func (s *AuthServiceImpl) ApproveUser(ctx context.Context, uid string, role mode
 	}
 
 	// 2. Ensure the user is pending approval or already approved
-	if user.Status != models.StatusPending && user.AdminApproved {
-		return fmt.Errorf("user is not pending approval or already approved: %s", user.Status)
+	if user.Status == models.StatusActive && user.AdminApproved {
+		return fmt.Errorf("user is already active and approved")
 	}
-
+	targetRole := user.Role
+	if user.Role == models.RoleUnassigned {
+		targetRole = role // Request'ten gelen rolü ata
+	}
 	// 3. Update user status, role, and approval date
-	err = s.userRepo.SetUserRoleAndStatus(ctx, uid, role, models.StatusActive, true)
-
+	err = s.userRepo.SetUserRoleAndStatus(ctx, uid, targetRole, models.StatusActive, true)
 	if err != nil {
-		return fmt.Errorf("failed to approve user: %w", err)
+		return fmt.Errorf("failed to update user status and role: %w", err)
 	}
 
 	return nil
@@ -193,6 +191,31 @@ func (s *AuthServiceImpl) ActivateUser(ctx context.Context, uid string) error {
 	// 3. Update user status to active
 	if err := s.userRepo.SetUserRoleAndStatus(ctx, uid, user.Role, models.StatusActive, false); err != nil {
 		return fmt.Errorf("failed to activate user: %w", err)
+	}
+
+	return nil
+}
+
+func (s *AuthServiceImpl) PromoteUserToAdmin(ctx context.Context, uid string) error {
+	// 1. Retrieve the user by UID
+	user, err := s.userRepo.GetUserByUID(ctx, uid)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve user: %w", err)
+	}
+
+	// 2. Ensure the user is already active
+	if user.Status != models.StatusActive {
+		return fmt.Errorf("user is not active: %s", user.Status)
+	}
+
+	// 3. Ensure the user is not already an admin
+	if user.Role == models.RoleAdmin {
+		return fmt.Errorf("user is already an admin")
+	}
+
+	// 4. Update user role to admin
+	if err := s.userRepo.SetUserRoleAndStatus(ctx, uid, models.RoleAdmin, user.Status, user.AdminApproved); err != nil {
+		return fmt.Errorf("failed to promote user to admin: %w", err)
 	}
 
 	return nil
