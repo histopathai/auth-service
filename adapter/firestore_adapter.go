@@ -102,16 +102,16 @@ func (fa *FirestoreAdapter) DeleteUser(ctx context.Context, uid string) error {
 func (fa *FirestoreAdapter) SetUserRoleAndStatus(ctx context.Context, uid string, role models.UserRole, status models.UserStatus, adminApproved bool) error {
 
 	updates := []firestore.Update{
-		{Path: "role", Value: role},
-		{Path: "status", Value: status},
-		{Path: "adminApproved", Value: adminApproved},
+		{Path: "Role", Value: role},
+		{Path: "Status", Value: status},
+		{Path: "AdminApproved", Value: adminApproved},
 	}
 
 	if adminApproved {
 		now := time.Now()
-		updates = append(updates, firestore.Update{Path: "approvalDate", Value: now})
+		updates = append(updates, firestore.Update{Path: "ApprovalDate", Value: now})
 	} else {
-		updates = append(updates, firestore.Update{Path: "approvalDate", Value: nil})
+		updates = append(updates, firestore.Update{Path: "ApprovalDate", Value: nil})
 	}
 
 	_, err := fa.collection.Doc(uid).Update(ctx, updates)
