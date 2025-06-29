@@ -12,10 +12,10 @@
 *.test
 *.coverprofile
 
-# Dependency directories (note: if you’re using Go modules, you might want to keep vendor/)
+# Dependency directories (Go modülü kullanıyorsan vendor'ı genelde saklamazsın)
 vendor/
 
-# Go workspace file
+# Go workspace files (Go 1.18+)
 go.work
 go.work.sum
 
@@ -39,22 +39,28 @@ dist/
 # Coverage results
 coverage.out
 
-# --- START: Specific rules for pkg/ directory ---
-# Ignore everything inside pkg/
-pkg/**
-
-# BUT, do NOT ignore the pkg/models/ directory itself
-!pkg/models/
-
-# And do NOT ignore any files or directories directly inside pkg/models/
-!pkg/models/**
-# --- END: Specific rules for pkg/ directory ---
-
-
-
-# Local env files (if used)
+# Environment files
 .env
+.env.local
+.env.*.local
 
+# Swagger generated files (dışa aktarılanlar)
+docs/swagger.json
+docs/swagger.yaml
+
+# Firebase config ve local test konfigürasyonları (prod için hassas olabilir)
+firebase.json
+firestore.rules
+firestore.indexes.json
 
 # Temporary files
 *.tmp
+*.bak
+*.old
+
+# HTML mock files
+field.html
+
+# Ignore generated Go doc file
+docs/docs.go
+.firebaserc
