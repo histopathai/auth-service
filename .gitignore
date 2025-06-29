@@ -54,7 +54,7 @@ pkg/**
 
 # Local env files (if used)
 .env
-.env.*
+
 
 # Temporary files
 *.tmp
