@@ -1,0 +1,551 @@
+basePath: /api/v1
+definitions:
+  models.User:
+    description: Represents a user's full profile stored in the database.
+    properties:
+      adminApproved:
+        description: '@Property AdminApproved bool "Indicates if the user was approved
+          by an admin"'
+        type: boolean
+      approvalDate:
+        description: '@Property ApprovalDate time.Time "Timestamp when the user account
+          was approved (optional)"'
+        type: string
+      createdAt:
+        description: '@Property CreatedAt time.Time "Timestamp when the user account
+          was created"'
+        type: string
+      displayName:
+        description: '@Property DisplayName string "The display name of the user (optional)"'
+        type: string
+      email:
+        description: '@Property Email string "The email address of the user"'
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/models.UserRole'
+        description: '@Property Role UserRole "The assigned role of the user"'
+      status:
+        allOf:
+        - $ref: '#/definitions/models.UserStatus'
+        description: '@Property Status UserStatus "The status of the user account"'
+      uid:
+        description: '@Property UID string "The unique identifier of the user"'
+        type: string
+      updatedAt:
+        description: '@Property UpdatedAt time.Time "Timestamp when the user account
+          was last updated"'
+        type: string
+    required:
+    - email
+    - uid
+    type: object
+  models.UserRegistrationPayload:
+    description: Represents the required payload for user registration.
+    properties:
+      displayName:
+        description: '@Property DisplayName string "The display name of the user (optional)"'
+        type: string
+      email:
+        description: '@Property Email string "The email address of the user" minLength(1)
+          format(email)'
+        type: string
+      password:
+        description: '@Property Password string "The password for the user account"
+          minLength(8)'
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.UserRole:
+    enum:
+    - admin
+    - user
+    - viewer
+    - unassigned
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleUser
+    - RoleViewer
+    - RoleUnassigned
+  models.UserStatus:
+    enum:
+    - pending
+    - active
+    - suspended
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusActive
+    - StatusSuspended
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: HistopathAI Authentication Service API documentation.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: HistopathAI Auth Service API
+  version: "1.0"
+paths:
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all registered users (Admin access required)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved users
+          schema:
+            properties:
+              count:
+                type: integer
+              users:
+                items:
+                  $ref: '#/definitions/models.User'
+                type: array
+            type: object
+        "500":
+          description: Failed to retrieve users
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get All Users
+      tags:
+      - Admin - Users
+  /admin/users/{uid}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a single user by their UID (Admin access required)
+      parameters:
+      - description: User UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User retrieved successfully
+          schema:
+            properties:
+              user:
+                $ref: '#/definitions/models.User'
+            type: object
+        "400":
+          description: User UID is required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: Failed to retrieve the user
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get User by UID
+      tags:
+      - Admin - Users
+  /admin/users/{uid}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approves a pending user account and assigns a role (Admin access
+        required)
+      parameters:
+      - description: User UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: User Role
+        in: body
+        name: payload
+        required: true
+        schema:
+          properties:
+            role:
+              $ref: '#/definitions/models.UserRole'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User approved successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Invalid request payload or missing UID
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: Failed to approve user
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Approve User
+      tags:
+      - Admin - Users
+  /admin/users/{uid}/suspend:
+    post:
+      consumes:
+      - application/json
+      description: Suspends a user account (Admin access required)
+      parameters:
+      - description: User UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User suspended successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: User UID is required
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: Failed to suspend user
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Suspend User
+      tags:
+      - Admin - Users
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Endpoint for user registration
+      parameters:
+      - description: User registration payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserRegistrationPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            properties:
+              message:
+                type: string
+              user:
+                $ref: '#/definitions/models.User'
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: User registration failed
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      summary: User Registration
+      tags:
+      - Auth
+  /auth/verify:
+    post:
+      consumes:
+      - application/json
+      description: Endpoint to verify a user token
+      parameters:
+      - description: Token to verify
+        in: body
+        name: token
+        required: true
+        schema:
+          properties:
+            token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token verified successfully
+          schema:
+            properties:
+              message:
+                type: string
+              user:
+                $ref: '#/definitions/models.User'
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "401":
+          description: Invalid token
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      summary: Token Verification
+      tags:
+      - Auth
+  /health:
+    get:
+      description: Returns the overall health status of the service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            properties:
+              service:
+                type: string
+              status:
+                type: string
+            type: object
+      summary: Service Health Check
+      tags:
+      - Health
+  /health/ready:
+    get:
+      description: Returns whether the service is ready to accept requests (e.g.,
+        database connectivity)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is ready
+          schema:
+            properties:
+              service:
+                type: string
+              status:
+                type: string
+            type: object
+      summary: Service Readiness Check
+      tags:
+      - Health
+  /user/account:
+    delete:
+      consumes:
+      - application/json
+      description: Endpoint for a user to delete their own account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account deleted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: Failed to delete user account
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Delete User Account
+      tags:
+      - User
+  /user/password:
+    put:
+      consumes:
+      - application/json
+      description: Endpoint for a user to change their own password
+      parameters:
+      - description: New password
+        in: body
+        name: new_password
+        required: true
+        schema:
+          properties:
+            new_password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password changed successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+        "500":
+          description: Failed to change password
+          schema:
+            properties:
+              details:
+                type: string
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Change Password
+      tags:
+      - User
+  /user/profile:
+    get:
+      consumes:
+      - application/json
+      description: Returns the profile information of the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            properties:
+              user:
+                $ref: '#/definitions/models.User'
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Profile
+      tags:
+      - User
+schemes:
+- http
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
