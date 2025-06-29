@@ -2,6 +2,8 @@ package models
 
 import "time"
 
+// UserStatus is an enum for user account status.
+// @Enum pending active suspended
 type UserStatus string
 
 const (
@@ -10,7 +12,8 @@ const (
 	StatusSuspended UserStatus = "suspended"
 )
 
-// User Role
+// UserRole is an enum for user roles.
+// @Enum admin user viewer unassigned
 type UserRole string
 
 const (
@@ -20,22 +23,40 @@ const (
 	RoleUnassigned UserRole = "unassigned"
 )
 
+// User represents the full user profile stored in the database.
+// @Description Represents a user's full profile stored in the database.
 type User struct {
-	UID           string     `json:"uid" validate:"required"`
-	Email         string     `json:"email" validate:"required,email"`
-	DisplayName   string     `json:"displayName,omitempty"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
-	Status        UserStatus `json:"status"`
-	Role          UserRole   `json:"role"`
-	AdminApproved bool       `json:"adminApproved"`
-	ApprovalDate  time.Time  `json:"approvalDate,omitempty"`
+	// @Property UID string "The unique identifier of the user"
+	UID string `json:"uid" validate:"required"`
+	// @Property Email string "The email address of the user"
+	Email string `json:"email" validate:"required,email"`
+	// @Property DisplayName string "The display name of the user (optional)"
+	DisplayName string `json:"displayName,omitempty"`
+	// @Property CreatedAt time.Time "Timestamp when the user account was created"
+	CreatedAt time.Time `json:"createdAt"`
+	// @Property UpdatedAt time.Time "Timestamp when the user account was last updated"
+	UpdatedAt time.Time `json:"updatedAt"`
+	// @Property Status UserStatus "The status of the user account"
+	Status UserStatus `json:"status"`
+	// @Property Role UserRole "The assigned role of the user"
+	Role UserRole `json:"role"`
+	// @Property AdminApproved bool "Indicates if the user was approved by an admin"
+	AdminApproved bool `json:"adminApproved"`
+	// @Property ApprovalDate time.Time "Timestamp when the user account was approved (optional)"
+	ApprovalDate time.Time `json:"approvalDate,omitempty"`
 }
 
+// UpdateUserRequest represents the payload for updating user information.
+// @Description Payload for updating existing user information (only specified fields are updated)
 type UpdateUserRequest struct {
-	DisplayName   *string     `json:"displayName,omitempty"`
-	Status        *UserStatus `json:"status,omitempty"`
-	Role          *UserRole   `json:"role,omitempty"`
-	AdminApproved *bool       `json:"adminApproved,omitempty"`
-	ApprovalDate  *time.Time  `json:"approvalDate,omitempty"`
+	// @Property DisplayName *string "The display name of the user (optional)"
+	DisplayName *string `json:"displayName,omitempty"`
+	// @Property Status *UserStatus "The status of the user account (optional)"
+	Status *UserStatus `json:"status,omitempty"`
+	// @Property Role *UserRole "The assigned role of the user (optional)"
+	Role *UserRole `json:"role,omitempty"`
+	// @Property AdminApproved *bool "Indicates if the user was approved by an admin (optional)"
+	AdminApproved *bool `json:"adminApproved,omitempty"`
+	// @Property ApprovalDate *time.Time "Timestamp when the user account was approved (optional)"
+	ApprovalDate *time.Time `json:"approvalDate,omitempty"`
 }
