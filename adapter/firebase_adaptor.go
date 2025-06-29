@@ -35,6 +35,7 @@ func (fa *FirebaseAuthAdapter) RegisterUser(ctx context.Context, payload *models
 
 	u, err := fa.client.CreateUser(ctx, params)
 	if err != nil {
+		fmt.Println("Error creating user in Firebase:", err)
 		return nil, err
 	}
 
