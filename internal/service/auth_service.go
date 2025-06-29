@@ -37,4 +37,7 @@ type AuthService interface {
 
 	//GetAllUsers retrieves all users with optional pagination.
 	GetAllUsers(ctx context.Context) ([]*models.User, error)
+
+	//PromoteUserToAdmin promotes a user to admin status.
+	PromoteUserToAdmin(ctx context.Context, uid string) error
 }
