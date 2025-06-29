@@ -6,10 +6,14 @@ import (
 	"github.com/histopathai/auth-service/internal/middleware"
 	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/service"
+
+	// Swagger dokümantasyonu için gerekli importlar
+	_ "github.com/histopathai/auth-service/docs" // Oluşturulan docs/swagger.go dosyasını import edin
+	swaggerFiles "github.com/swaggo/files"       // gin-swagger için gerekli dosyalar
+	ginSwagger "github.com/swaggo/gin-swagger"   // gin ile Swagger entegrasyonu
 )
 
-//SetoRoutes configures all routes for the application
-
+// SetupRoutes configures all routes for the application
 func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLimiter) *gin.Engine {
 
 	// Initialize handlers
@@ -23,7 +27,7 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 	// Create a new Gin router
 	router := gin.New()
 
-	//Global middleware
+	// Global middleware
 	router.Use(middleware.RecoveryMiddleware())
 	router.Use(middleware.LoggingMiddleware())
 	router.Use(middleware.CORSMiddleware())
@@ -39,17 +43,17 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 	api := router.Group("/api/v1")
 	api.Use(rateLimiter.RateLimit())
 
-	//Public Authentication routes
+	// Public Authentication routes
 	auth := api.Group("/auth")
 	{
-		//Registration
+		// Registration
 		auth.POST("/register", authHandler.Register)
 
-		//Token verification
+		// Token verification
 		auth.POST("/verify", authHandler.VerifyToken)
 	}
 
-	//Protected routes (require authentication)
+	// Protected routes (require authentication)
 	user := api.Group("/user")
 	user.Use(authMiddleware.RequireAuth())
 	user.Use(authMiddleware.RequireStatus(models.StatusActive)) // Ensure user is active)
@@ -57,14 +61,14 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 		// Get own profile
 		user.GET("/profile", authHandler.GetProfile)
 
-		//Change own password
-		user.PUT("/password", authHandler.ChangePassword)
+		// Change own password
+		user.PUT("/password", authHandler.ChangePasswordSelf)
 
-		//Delete own account
+		// Delete own account
 		user.DELETE("/account", authHandler.DeleteAccount)
 	}
 
-	//Admin routes (require admin role)
+	// Admin routes (require admin role)
 	admin := api.Group("/admin")
 	admin.Use(authMiddleware.RequireAuth())
 	admin.Use(authMiddleware.RequireRole(models.RoleAdmin))      // Ensure user is admin
@@ -86,7 +90,18 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 			// Suspend user account
 			users.POST("/:uid/suspend", adminHandler.SuspendUser)
 
+			// Change user password (admin)
+			users.PUT("/:uid/password", adminHandler.ChangePasswordForUser)
+
+			// Promote user to admin
+			users.POST("/:uid/promote", adminHandler.MakeAdmin)
+
 		}
 	}
+
+	// Swagger UI route
+	// Bu satır, uygulamanızın /swagger yoluna gelen istekleri Swagger UI'a yönlendirir.
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return router
 }
