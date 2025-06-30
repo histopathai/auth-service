@@ -6,7 +6,7 @@ on:
       - main # main branch'ine yapılan push'larda çalışacak
 
 env:
-  PROJECT_ID: your-gcp-project-id # Kendi GCP proje ID'nizi buraya yazın
+  PROJECT_ID: auth-service-test-464208 # Kendi GCP proje ID'nizi buraya yazın
   REGION: europe-west3 # Cloud Run bölgesini ihtiyacınıza göre değiştirin
   SERVICE_NAME: auth-service # Cloud Run servis adını belirleyin
   ARTIFACT_REGISTRY_REPO: auth-service-repo # Artifact Registry repo adını belirleyin
