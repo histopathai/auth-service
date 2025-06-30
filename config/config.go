@@ -5,48 +5,38 @@ import (
 	"strconv"
 )
 
-// Config holds all the application configurations
 type Config struct {
-	Server    ServerConfig    `json:"server"`
-	Firebase  FirebaseConfig  `json:"firebase"`
-	Firestore FirestoreConfig `json:"firestore"`
-	SMTP      SMTPConfig      `json:"smtp"`
+	Server    ServerConfig
+	Firebase  FirebaseConfig
+	Firestore FirestoreConfig
+	SMTP      SMTPConfig
 }
 
-// ServerConfig holds server-related configurations
 type ServerConfig struct {
-	Port         int `json:"port"`
-	ReadTimeout  int `json:"read_timeout"`
-	WriteTimeout int `json:"write_timeout"`
-	IdleTimeout  int `json:"idle_timeout"`
+	Port         int
+	ReadTimeout  int
+	WriteTimeout int
+	IdleTimeout  int
 }
 
-// FirebaseConfig holds Firebase-related configurations
 type FirebaseConfig struct {
-	ProjectID         string `json:"project_id"`
-	ServiceAccountKey string `json:"service_account_key"`
-	AuthEmulatorHost  string `mapstructure:"FIREBASE_AUTH_EMULATOR_HOST"`
+	ProjectID string // Optional, mostly unused now
 }
 
-// FirestoreConfig holds Firestore-related configurations
 type FirestoreConfig struct {
-	UsersCollection string `json:"users_collection"`
-	ProjectID       string `json:"project_id"`    // Optional, can be used for Firestore client initialization
-	EmulatorHost    string `json:"emulator_host"` // Optional, can be used to connect to Firestore emulator
+	UsersCollection string
 }
 
-// SMPTConfig holds SMTP server configurations
 type SMTPConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Sender   string `json:"sender"`
+	Host     string
+	Port     int
+	Username string
+	Password string
+	Sender   string
 }
 
-// LoadConfig loads the configuration from environment variables or defaults
 func LoadConfig() (*Config, error) {
-	config := &Config{
+	return &Config{
 		Server: ServerConfig{
 			Port:         getEnvAsInt("SERVER_PORT", 8080),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 15),
@@ -54,40 +44,33 @@ func LoadConfig() (*Config, error) {
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
 		},
 		Firebase: FirebaseConfig{
-			ProjectID: getEnv("FIREBASE_PROJECT_ID", "your-project-id"),
+			ProjectID: getEnv("FIREBASE_PROJECT_ID", ""), // optional
 		},
 		Firestore: FirestoreConfig{
 			UsersCollection: getEnv("FIRESTORE_USERS_COLLECTION", "users"),
 		},
 		SMTP: SMTPConfig{
-			Host:     getEnv("SMTP_HOST", "smtp.example.com"),
+			Host:     getEnv("SMTP_HOST", ""),
 			Port:     getEnvAsInt("SMTP_PORT", 587),
-			Username: getEnv("SMTP_USERNAME", "root"),
-			Password: getEnv("SMTP_PASSWORD", "password"),
-			Sender:   getEnv("SMTP_SENDER_EMAIL", "smtp.example.com"),
+			Username: getEnv("SMTP_USERNAME", ""),
+			Password: getEnv("SMTP_PASSWORD", ""),
+			Sender:   getEnv("SMTP_SENDER_EMAIL", ""),
 		},
-	}
-	return config, nil
+	}, nil
 }
 
-// getEnv retrieves an environment variable or returns a default value if not set
 func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	return value
+	return defaultValue
 }
 
-// getEnvAsInt retrieves an environment variable as an integer or returns a default value if not set
 func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := os.Getenv(key)
-	if valueStr == "" {
-		return defaultValue
+	if value := os.Getenv(key); value != "" {
+		if intVal, err := strconv.Atoi(value); err == nil {
+			return intVal
+		}
 	}
-	value, err := strconv.Atoi(valueStr)
-	if err != nil {
-		return defaultValue
-	}
-	return value
+	return defaultValue
 }
