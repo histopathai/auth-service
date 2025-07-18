@@ -1,62 +1,56 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 )
 
 type Config struct {
-	Server    ServerConfig
-	Firebase  FirebaseConfig
-	Firestore FirestoreConfig
-	SMTP      SMTPConfig
+	ProjectID       string
+	Region          string
+	ProjectNumber   string
+	ImageCatalogURL string
+	Server          ServerConfig
 }
 
 type ServerConfig struct {
-	Port         int
+	Port         string
 	ReadTimeout  int
 	WriteTimeout int
 	IdleTimeout  int
-}
-
-type FirebaseConfig struct {
-	ProjectID string // Optional, mostly unused now
-}
-
-type FirestoreConfig struct {
-	UsersCollection string
-}
-
-type SMTPConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Sender   string
+	GINMode      string
 }
 
 func LoadConfig() (*Config, error) {
-	return &Config{
+	env := os.Getenv("ENV")
+
+	config := &Config{
+		ProjectID:       os.Getenv("PROJECT_ID"),
+		Region:          os.Getenv("REGION"),
+		ImageCatalogURL: os.Getenv("IMAGE_CATALOG_SERVICE_URL"),
 		Server: ServerConfig{
-			Port:         getEnvAsInt("SERVER_PORT", 8080),
+			Port:         getEnv("PORT", "8080"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 15),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 15),
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
+			GINMode:      os.Getenv("GIN_MODE"),
 		},
-		Firebase: FirebaseConfig{
-			ProjectID: getEnv("FIREBASE_PROJECT_ID", ""), // optional
-		},
-		Firestore: FirestoreConfig{
-			UsersCollection: getEnv("FIRESTORE_USERS_COLLECTION", "users"),
-		},
-		SMTP: SMTPConfig{
-			Host:     getEnv("SMTP_HOST", ""),
-			Port:     getEnvAsInt("SMTP_PORT", 587),
-			Username: getEnv("SMTP_USERNAME", ""),
-			Password: getEnv("SMTP_PASSWORD", ""),
-			Sender:   getEnv("SMTP_SENDER_EMAIL", ""),
-		},
-	}, nil
+	}
+
+	if env != "LOCAL" {
+		project_number := os.Getenv("PROJECT_NUMBER")
+		service_name := os.Getenv("IMAGE_CATALOG_SERVICE_NAME")
+		region := os.Getenv("REGION")
+		if project_number == "" || service_name == "" || region == "" {
+			return nil, fmt.Errorf("PROJECT_NUMBER, IMAGE_CATALOG_SERVICE_NAME, and REGION must be set in non-local environments")
+		}
+
+		config.ImageCatalogURL = fmt.Sprintf("https://%s-%s.%s.run.app", service_name, project_number, region)
+		config.Server.GINMode = "release"
+	}
+	return config, nil
+
 }
 
 func getEnv(key, defaultValue string) string {
