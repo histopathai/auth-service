@@ -7,26 +7,19 @@ import (
 
 	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/repository"
-	"github.com/histopathai/auth-service/internal/utils"
 )
-
-// Ensure AuthServiceImpl implements AuthService interface
-
-var _ AuthService = &AuthServiceImpl{}
 
 // AuthServiceImpl implements the AuthService interface.
 type AuthServiceImpl struct {
-	authRepo    repository.AuthRepository
-	userRepo    repository.UserRepository
-	mailService utils.EmailService
+	authRepo repository.AuthRepository
+	userRepo repository.UserRepository
 }
 
 // NewAuthService creates a new instance of AuthServiceImpl.
-func NewAuthService(authRepo repository.AuthRepository, userRepo repository.UserRepository, mailService utils.EmailService) *AuthServiceImpl {
+func NewAuthService(authRepo repository.AuthRepository, userRepo repository.UserRepository) *AuthServiceImpl {
 	return &AuthServiceImpl{
-		authRepo:    authRepo,
-		userRepo:    userRepo,
-		mailService: mailService,
+		authRepo: authRepo,
+		userRepo: userRepo,
 	}
 }
 
