@@ -30,11 +30,11 @@ func LoadConfig() (*Config, error) {
 		Region:          os.Getenv("REGION"),
 		ImageCatalogURL: os.Getenv("IMAGE_CATALOG_SERVICE_URL"),
 		Server: ServerConfig{
-			Port:         getEnv("PORT", "8080"),
+			Port:         getEnvOrDefault("PORT", "8080"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 15),
 			WriteTimeout: getEnvAsInt("WRITE_TIMEOUT", 15),
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
-			GINMode:      os.Getenv("GIN_MODE"),
+			GINMode:      getEnvOrDefault("GIN_MODE", "debug"),
 		},
 	}
 
@@ -53,7 +53,7 @@ func LoadConfig() (*Config, error) {
 
 }
 
-func getEnv(key, defaultValue string) string {
+func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
