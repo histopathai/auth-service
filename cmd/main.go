@@ -14,17 +14,17 @@ import (
 )
 
 func main() {
-	// Structured logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
-
 	// Load configuration from env
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("❌ Failed to load config: %v", err)
 	}
+
+	// Structured logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
 
 	// Firebase App init (uses GOOGLE_APPLICATION_CREDENTIALS if set, otherwise default credentials)
 	app, err := firebase.NewApp(context.Background(), nil)
