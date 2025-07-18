@@ -15,7 +15,7 @@ jobs:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       PROJECT_NUMBER: ${{ secrets.GCP_PROJECT_NUMBER }}
       REGION: ${{ secrets.GCP_REGION }}
-      IMAGE_CATALOG_SERVICE_NAME: ${{ secrets.IMAGE_CATALOG_SERVICE_NAME }}
+      IMAGE_CATALOG_SERVICE_NAME: ${{ secrets.IMG_CATALOG_SERVICE_NAME }}
 
     steps:
       - name: Checkout repository
