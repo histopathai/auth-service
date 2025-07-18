@@ -10,7 +10,6 @@ import (
 	"github.com/histopathai/auth-service/adapter"
 	"github.com/histopathai/auth-service/config"
 	"github.com/histopathai/auth-service/internal/service"
-	"github.com/histopathai/auth-service/internal/utils"
 	"github.com/histopathai/auth-service/server"
 )
 
@@ -48,13 +47,12 @@ func main() {
 		log.Fatalf("❌ Failed to initialize Firebase Auth adapter: %v", err)
 	}
 
-	userRepo, err := adapter.NewFirestoreAdapter(firestoreClient, cfg.Firestore.UsersCollection)
+	userRepo, err := adapter.NewFirestoreAdapter(firestoreClient, "users")
 	if err != nil {
 		log.Fatalf("❌ Failed to initialize Firestore adapter: %v", err)
 	}
 
-	emailService := utils.NewMailService(cfg.SMTP)
-	authService := service.NewAuthService(authRepo, userRepo, emailService)
+	authService := service.NewAuthService(authRepo, userRepo)
 
 	authServer := server.NewServer(cfg, authService)
 	if err := authServer.Start(); err != nil {
