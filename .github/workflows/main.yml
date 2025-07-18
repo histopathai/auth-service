@@ -1,4 +1,45 @@
-- name: Deploy to Cloud Run
+name: Build and Deploy Auth Service
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REPO_NAME: auth-service
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      PROJECT_NUMBER: ${{ secrets.GCP_PROJECT_NUMBER }}
+      REGION: ${{ secrets.GCP_REGION }}
+      IMAGE_CATALOG_SERVICE_NAME: ${{ secrets.IMAGE_CATALOG_SERVICE_NAME }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/histopath-docker-repo/${{ env.REPO_NAME }}:latest .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/histopath-docker-repo/${{ env.REPO_NAME }}:latest
+
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${REPO_NAME} \
             --image ${REGION}-docker.pkg.dev/${PROJECT_ID}/histopath-docker-repo/${REPO_NAME}:latest \
