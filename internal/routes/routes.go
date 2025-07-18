@@ -5,6 +5,7 @@ import (
 	"github.com/histopathai/auth-service/internal/handlers"
 	"github.com/histopathai/auth-service/internal/middleware"
 	"github.com/histopathai/auth-service/internal/models"
+	"github.com/histopathai/auth-service/internal/proxy"
 	"github.com/histopathai/auth-service/internal/service"
 
 	// Swagger dokümantasyonu için gerekli importlar
@@ -14,7 +15,7 @@ import (
 )
 
 // SetupRoutes configures all routes for the application
-func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLimiter) *gin.Engine {
+func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLimiter, imgCatalogURL string) *gin.Engine {
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -101,6 +102,16 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 
 	// Swagger UI route
 	// Bu satır, uygulamanızın /swagger yoluna gelen istekleri Swagger UI'a yönlendirir.
+
+	//Proxies for image catalog service
+	apiProxy := api.Group("/image-catalog")
+	apiProxy.Use(authMiddleware.RequireAuth())
+	apiProxy.Use(authMiddleware.RequireStatus(models.StatusActive)) // Ensure user is active
+	{
+		imageCatalogURL := imgCatalogURL
+		apiProxy.Any("/*any", proxy.NewImageCatalogProxy(imageCatalogURL))
+	}
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return router
