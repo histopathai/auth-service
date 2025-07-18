@@ -25,20 +25,17 @@ type Server struct {
 
 // NewServer creates a new Server instance
 func NewServer(cfg *config.Config, authService service.AuthService) *Server {
-	// Set Gin mode based on environment
-	if os.Getenv("GIN_MODE") == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	gin.SetMode(cfg.Server.GINMode)
 
 	// Create rate limiter ( 10 requests per second, burst of 20)
 	rateLimiter := middleware.NewRateLimiter(10, 20)
 
 	//Setup routes
-	router := routes.SetupRoutes(authService, rateLimiter)
+	router := routes.SetupRoutes(authService, rateLimiter, cfg.ImageCatalogURL)
 
 	// Create HTTP server
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:         fmt.Sprintf(":%s", cfg.Server.Port),
 		Handler:      router,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
