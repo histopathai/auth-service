@@ -103,13 +103,14 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 	// Swagger UI route
 	// Bu satır, uygulamanızın /swagger yoluna gelen istekleri Swagger UI'a yönlendirir.
 
-	//Proxies for image catalog service
-	apiProxy := api.Group("/image-catalog")
-	apiProxy.Use(authMiddleware.RequireAuth())
-	apiProxy.Use(authMiddleware.RequireStatus(models.StatusActive)) // Ensure user is active
+	imageCatalog := api.Group("/image-catalog")
+	imageCatalog.Use(authMiddleware.RequireAuth())
+	imageCatalog.Use(authMiddleware.RequireStatus(models.StatusActive))
 	{
 		imageCatalogURL := imgCatalogURL
-		apiProxy.Any("/*any", proxy.NewImageCatalogProxy(imageCatalogURL))
+		imageCatalog.Any("/*proxyPath", proxy.NewImageCatalogProxy(imageCatalogURL))
+		imageCatalog.Any("", proxy.NewImageCatalogProxy(imageCatalogURL))
+
 	}
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
