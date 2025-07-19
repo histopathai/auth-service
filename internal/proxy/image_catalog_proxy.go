@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/service"
 )
 
-func NewImageCatalogProxy(targetBaseURL string, sessionService *service.ImageSessionService) gin.HandlerFunc {
+func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService, sessionService *service.ImageSessionService) gin.HandlerFunc {
 	target, err := url.Parse(targetBaseURL)
 	if err != nil {
 		panic("Invalid target URL for image-catalog-service")
@@ -67,38 +68,80 @@ func NewImageCatalogProxy(targetBaseURL string, sessionService *service.ImageSes
 
 	return func(c *gin.Context) {
 		start := time.Now()
+		var user *models.User
 
-		// Session-based authentication
-		sessionID := c.Query("session")
-		if sessionID == "" {
-			log.Printf("❌ No session ID provided")
+		// 🔧 ÖNCE Bearer token kontrol et (API endpoints için)
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				bearerToken := parts[1]
+				log.Printf("🔍 Bearer token found - verifying...")
+
+				// AuthService ile token'ı verify et
+				authService := &service.AuthServiceImpl{} // Burayı kendi authService instance'ınıza göre ayarlayın
+				verifiedUser, err := authService.VerifyToken(c.Request.Context(), bearerToken)
+				if err == nil && verifiedUser != nil {
+					user = verifiedUser
+					log.Printf("✅ Bearer token verified for user: %s", user.UID)
+				} else {
+					log.Printf("❌ Bearer token verification failed: %v", err)
+				}
+			}
+		}
+
+		// 🔧 Eğer Bearer token yoksa veya geçersizse, session kontrol et
+		if user == nil {
+			sessionID := c.Query("session")
+			if sessionID != "" {
+				log.Printf("🔍 Session ID found: %s", sessionID[:8]+"...")
+
+				session, valid := sessionService.ValidateSession(sessionID)
+				if valid && session != nil {
+					// Session'dan user'ı al - burada authService.GetUser kullanmanız gerekebilir
+					log.Printf("✅ Session validated for user: %s", session.UserID)
+
+					// User objesini oluştur (basit yaklaşım)
+					user = &models.User{
+						UID:    session.UserID,
+						Role:   models.UserRole(session.Role),
+						Status: models.StatusActive, // Session varsa aktif kabul et
+					}
+
+					// Auto-extend session
+					if session.RequestCount%50 == 0 {
+						sessionService.ExtendSession(sessionID)
+						log.Printf("🔄 Session auto-extended")
+					}
+				} else {
+					log.Printf("❌ Invalid session: %s", sessionID[:8]+"...")
+				}
+			}
+		}
+
+		// 🔧 Hiçbir auth yoksa hata
+		if user == nil {
+			log.Printf("❌ No valid authentication found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "session_required",
-				"message": "Session ID required for image access",
+				"error":   "authentication_required",
+				"message": "Valid Bearer token or session required",
 			})
 			return
 		}
 
-		// Validate session (very fast - memory lookup)
-		session, valid := sessionService.ValidateSession(sessionID)
-		if !valid {
-			log.Printf("❌ Invalid session: %s", sessionID)
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "invalid_session",
-				"message": "Session expired or invalid",
+		// User status kontrolü
+		if user.Status != models.StatusActive {
+			log.Printf("❌ User not active: %s", user.Status)
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "account_inactive",
+				"message": "Account not active",
 			})
 			return
 		}
 
-		// Auto-extend session if heavily used (smart extension)
-		if session.RequestCount%50 == 0 { // Her 50 request'te bir extend et
-			sessionService.ExtendSession(sessionID)
-			log.Printf("🔄 Session auto-extended: %s", sessionID)
-		}
-
-		// Add user context
-		ctx := context.WithValue(c.Request.Context(), "user_id", session.UserID)
-		ctx = context.WithValue(ctx, "user_role", session.Role)
+		// Context'e user bilgilerini ekle
+		ctx := context.WithValue(c.Request.Context(), "user_id", user.UID)
+		ctx = context.WithValue(ctx, "user_role", string(user.Role))
 		c.Request = c.Request.WithContext(ctx)
 
 		// Performance logging
@@ -109,6 +152,7 @@ func NewImageCatalogProxy(targetBaseURL string, sessionService *service.ImageSes
 			}
 		}()
 
+		log.Printf("🔍 Proxy: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, user.UID)
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }

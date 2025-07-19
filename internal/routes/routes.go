@@ -96,9 +96,9 @@ func SetupRoutes(authService service.AuthService, sessionService *service.ImageS
 	// Bu routes rate limiting DIŞINDA - çünkü OpenSeadragon 50+ request yapar
 	imageCatalogGroup := router.Group("/api/v1/image-catalog")
 	{
-		// Session-based authentication, no rate limiting
-		imageCatalogGroup.Any("/*proxyPath", proxy.NewImageCatalogProxy(imgCatalogURL, sessionService))
-		imageCatalogGroup.Any("", proxy.NewImageCatalogProxy(imgCatalogURL, sessionService))
+		// AuthService'i de geçin
+		imageCatalogGroup.Any("/*proxyPath", proxy.NewImageCatalogProxy(imgCatalogURL, authService, sessionService))
+		imageCatalogGroup.Any("", proxy.NewImageCatalogProxy(imgCatalogURL, authService, sessionService))
 	}
 
 	// Swagger UI route
