@@ -40,10 +40,10 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 			req.URL.Path = newPath
 			req.Host = target.Host
 
-			// Forward query parameters (but remove token)
+			// Forward query parameters (but remove token if present)
 			if req.URL.RawQuery != "" {
 				log.Printf("🔍 Proxy: Query params: %s", req.URL.RawQuery)
-				// Remove token from query params before forwarding
+				// Remove token from query params before forwarding to avoid exposing it
 				values := req.URL.Query()
 				values.Del("token")
 				req.URL.RawQuery = values.Encode()
@@ -72,36 +72,10 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 	}
 
 	return func(c *gin.Context) {
-		// Check for token in query parameter (for direct requests like DZI, tiles, thumbnails)
-		token := c.Query("token")
-		var user *models.User
-
-		if token != "" {
-			// Verify token from query parameter
-			verifiedUser, err := authService.VerifyToken(c.Request.Context(), token)
-			if err != nil {
-				log.Printf("❌ Token verification failed: %v", err)
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error":   "invalid_token",
-					"message": "Token verification failed",
-				})
-				return
-			}
-			user = verifiedUser
-			log.Printf("✅ Token verified from query param for user: %s", user.UID)
-		} else {
-			// Try to get user from context (set by middleware)
-			if userFromContext, exists := c.Get("user"); exists {
-				if u, ok := userFromContext.(*models.User); ok {
-					user = u
-					log.Printf("✅ User found in context: %s", user.UID)
-				}
-			}
-		}
-
-		// Ensure user is authenticated and active
-		if user == nil {
-			log.Printf("❌ No authenticated user found")
+		// Get user from context (set by auth middleware)
+		user, exists := c.Get("user")
+		if !exists {
+			log.Printf("❌ No user found in context")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "authentication_required",
 				"message": "Authentication required",
@@ -109,22 +83,23 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 			return
 		}
 
-		if user.Status != models.StatusActive {
-			log.Printf("❌ User not active: %s", user.Status)
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "account_inactive",
-				"message": "Account is not active",
+		u, ok := user.(*models.User)
+		if !ok {
+			log.Printf("❌ Invalid user type in context")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "invalid_user_context",
+				"message": "Invalid user context",
 			})
 			return
 		}
 
 		// Add user context for headers
 		ctx := c.Request.Context()
-		ctx = context.WithValue(ctx, "user_id", user.UID)
-		ctx = context.WithValue(ctx, "user_role", string(user.Role))
+		ctx = context.WithValue(ctx, "user_id", u.UID)
+		ctx = context.WithValue(ctx, "user_role", string(u.Role))
 		c.Request = c.Request.WithContext(ctx)
 
-		log.Printf("🔍 Proxy: Processing request: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, user.UID)
+		log.Printf("🔍 Proxy: Processing request: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, u.UID)
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }

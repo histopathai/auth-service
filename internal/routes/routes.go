@@ -100,10 +100,9 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 		}
 	}
 
-	// Swagger UI route
-	// Bu satır, uygulamanızın /swagger yoluna gelen istekleri Swagger UI'a yönlendirir.
-
 	imageCatalog := api.Group("/image-catalog")
+	imageCatalog.Use(authMiddleware.RequireAuth())
+	imageCatalog.Use(authMiddleware.RequireStatus(models.StatusActive))
 	{
 		imageCatalogURL := imgCatalogURL
 
