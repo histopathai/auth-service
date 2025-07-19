@@ -1,3 +1,4 @@
+// internal/proxy/optimized_image_catalog_proxy.go
 package proxy
 
 import (
@@ -7,13 +8,13 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/histopathai/auth-service/internal/models"
 	"github.com/histopathai/auth-service/internal/service"
 )
 
-func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService) gin.HandlerFunc {
+func NewImageCatalogProxy(targetBaseURL string, sessionService *service.ImageSessionService) gin.HandlerFunc {
 	target, err := url.Parse(targetBaseURL)
 	if err != nil {
 		panic("Invalid target URL for image-catalog-service")
@@ -22,124 +23,92 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			originalPath := req.URL.Path
-			log.Printf("🔍 Proxy: Original path: %s", originalPath)
 
-			// Remove the /api/v1/image-catalog prefix and prepend /api/v1
+			// Path transformation
 			trimmed := strings.TrimPrefix(originalPath, "/api/v1/image-catalog")
 			if trimmed == "" {
 				trimmed = "/"
 			}
 			newPath := "/api/v1" + trimmed
 
-			log.Printf("🔍 Proxy: New path: %s", newPath)
-			log.Printf("🔍 Proxy: Target URL: %s", target.String())
-			log.Printf("🔍 Proxy: Full proxied URL: %s%s", target.String(), newPath)
-
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
 			req.URL.Path = newPath
 			req.Host = target.Host
 
-			// Forward query parameters (but remove token if present)
+			// Remove session from query params before forwarding
 			if req.URL.RawQuery != "" {
-				log.Printf("🔍 Proxy: Query params: %s", req.URL.RawQuery)
-				// Remove token from query params before forwarding to avoid exposing it
 				values := req.URL.Query()
-				values.Del("token")
+				values.Del("session")
 				req.URL.RawQuery = values.Encode()
 			}
 
-			// Add user context headers (if available)
+			// Add user headers from context
 			if userID := req.Context().Value("user_id"); userID != nil {
 				req.Header.Set("X-User-ID", userID.(string))
-				log.Printf("🔍 Proxy: Added X-User-ID header: %s", userID.(string))
 			}
 			if role := req.Context().Value("user_role"); role != nil {
 				req.Header.Set("X-User-Role", role.(string))
-				log.Printf("🔍 Proxy: Added X-User-Role header: %s", role.(string))
 			}
 		},
 		ModifyResponse: func(resp *http.Response) error {
-			// Log response details
-			log.Printf("🔍 Proxy: Response status: %d", resp.StatusCode)
+			// Cache headers for static assets (tiles, thumbnails)
+			if strings.Contains(resp.Request.URL.Path, "/proxy/") {
+				resp.Header.Set("Cache-Control", "public, max-age=3600") // 1 saat cache
+				resp.Header.Set("ETag", `"`+resp.Request.URL.Path+`"`)
+			}
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			log.Printf("❌ Proxy error: %v", err)
-			log.Printf("❌ Proxy error for URL: %s", r.URL.String())
+			log.Printf("❌ Proxy error: %v for URL: %s", err, r.URL.String())
 			http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
 		},
 	}
 
 	return func(c *gin.Context) {
-		var user *models.User
+		start := time.Now()
 
-		// Check if there's a token in query parameter (for direct asset requests)
-		token := c.Query("token")
-		if token != "" {
-			log.Printf("🔍 Token found in query parameter")
-			// Verify token from query parameter
-			verifiedUser, err := authService.VerifyToken(c.Request.Context(), token)
-			if err != nil {
-				log.Printf("❌ Token verification failed: %v", err)
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error":   "invalid_token",
-					"message": "Token verification failed",
-				})
-				return
-			}
-			user = verifiedUser
-			log.Printf("✅ Token verified from query param for user: %s", user.UID)
-		} else {
-			// Check for Bearer token in Authorization header
-			authHeader := c.GetHeader("Authorization")
-			if authHeader != "" {
-				parts := strings.Split(authHeader, " ")
-				if len(parts) == 2 && parts[0] == "Bearer" {
-					bearerToken := parts[1]
-					log.Printf("🔍 Bearer token found in Authorization header")
-
-					verifiedUser, err := authService.VerifyToken(c.Request.Context(), bearerToken)
-					if err != nil {
-						log.Printf("❌ Bearer token verification failed: %v", err)
-						c.JSON(http.StatusUnauthorized, gin.H{
-							"error":   "invalid_token",
-							"message": "Token verification failed",
-						})
-						return
-					}
-					user = verifiedUser
-					log.Printf("✅ Bearer token verified for user: %s", user.UID)
-				}
-			}
-		}
-
-		// Ensure user is authenticated and active
-		if user == nil {
-			log.Printf("❌ No authenticated user found")
+		// Session-based authentication
+		sessionID := c.Query("session")
+		if sessionID == "" {
+			log.Printf("❌ No session ID provided")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "authentication_required",
-				"message": "Authentication required",
+				"error":   "session_required",
+				"message": "Session ID required for image access",
 			})
 			return
 		}
 
-		if user.Status != models.StatusActive {
-			log.Printf("❌ User not active: %s", user.Status)
-			c.JSON(http.StatusForbidden, gin.H{
-				"error":   "account_inactive",
-				"message": "Account is not active",
+		// Validate session (very fast - memory lookup)
+		session, valid := sessionService.ValidateSession(sessionID)
+		if !valid {
+			log.Printf("❌ Invalid session: %s", sessionID)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "invalid_session",
+				"message": "Session expired or invalid",
 			})
 			return
 		}
 
-		// Add user context for headers
-		ctx := c.Request.Context()
-		ctx = context.WithValue(ctx, "user_id", user.UID)
-		ctx = context.WithValue(ctx, "user_role", string(user.Role))
+		// Auto-extend session if heavily used (smart extension)
+		if session.RequestCount%50 == 0 { // Her 50 request'te bir extend et
+			sessionService.ExtendSession(sessionID)
+			log.Printf("🔄 Session auto-extended: %s", sessionID)
+		}
+
+		// Add user context
+		ctx := context.WithValue(c.Request.Context(), "user_id", session.UserID)
+		ctx = context.WithValue(ctx, "user_role", session.Role)
 		c.Request = c.Request.WithContext(ctx)
 
-		log.Printf("🔍 Proxy: Processing request: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, user.UID)
+		// Performance logging
+		defer func() {
+			duration := time.Since(start)
+			if duration > 100*time.Millisecond {
+				log.Printf("⚠️ Slow request: %s took %v", c.Request.URL.Path, duration)
+			}
+		}()
+
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
