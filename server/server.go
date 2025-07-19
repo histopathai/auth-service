@@ -24,14 +24,14 @@ type Server struct {
 }
 
 // NewServer creates a new Server instance
-func NewServer(cfg *config.Config, authService service.AuthService) *Server {
+func NewServer(cfg *config.Config, authService service.AuthService, sessionService *service.ImageSessionService) *Server {
 	gin.SetMode(cfg.Server.GINMode)
 
-	// Create rate limiter ( 10 requests per second, burst of 20)
+	// Create rate limiter (10 requests per second, burst of 20)
 	rateLimiter := middleware.NewRateLimiter(10, 20)
 
-	//Setup routes
-	router := routes.SetupRoutes(authService, rateLimiter, cfg.ImageCatalogURL)
+	// 🔄 Setup routes with session service
+	router := routes.SetupRoutes(authService, sessionService, rateLimiter, cfg.ImageCatalogURL)
 
 	// Create HTTP server
 	httpServer := &http.Server{
@@ -50,7 +50,9 @@ func NewServer(cfg *config.Config, authService service.AuthService) *Server {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
-	slog.Info("Starting server", "port", s.config.Server.Port)
+	slog.Info("🚀 Starting server", "port", s.config.Server.Port)
+	slog.Info("📸 Image Session System: ACTIVE")
+	slog.Info("⚡ Rate Limiting: API Only (Images Unlimited)")
 
 	// Start server in a goroutine
 	go func() {
@@ -65,7 +67,7 @@ func (s *Server) Start() error {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	slog.Info("Shutting down server...")
+	slog.Info("🛑 Shutting down server...")
 
 	// Create a context with a timeout for graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -77,6 +79,6 @@ func (s *Server) Start() error {
 		return err
 	}
 
-	slog.Info("Server Exited")
+	slog.Info("✅ Server Exited")
 	return nil
 }
