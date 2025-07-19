@@ -101,15 +101,14 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 	}
 
 	imageCatalog := api.Group("/image-catalog")
-	imageCatalog.Use(authMiddleware.RequireAuth())
-	imageCatalog.Use(authMiddleware.RequireStatus(models.StatusActive))
 	{
 		imageCatalogURL := imgCatalogURL
 
-		// Pass authService to the proxy so it can verify tokens from query parameters
+		// Handle all routes through the proxy with flexible authentication
 		imageCatalog.Any("/*proxyPath", proxy.NewImageCatalogProxy(imageCatalogURL, authService))
 		imageCatalog.Any("", proxy.NewImageCatalogProxy(imageCatalogURL, authService))
 	}
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return router

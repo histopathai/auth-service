@@ -72,10 +72,51 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 	}
 
 	return func(c *gin.Context) {
-		// Get user from context (set by auth middleware)
-		user, exists := c.Get("user")
-		if !exists {
-			log.Printf("❌ No user found in context")
+		var user *models.User
+
+		// Check if there's a token in query parameter (for direct asset requests)
+		token := c.Query("token")
+		if token != "" {
+			log.Printf("🔍 Token found in query parameter")
+			// Verify token from query parameter
+			verifiedUser, err := authService.VerifyToken(c.Request.Context(), token)
+			if err != nil {
+				log.Printf("❌ Token verification failed: %v", err)
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error":   "invalid_token",
+					"message": "Token verification failed",
+				})
+				return
+			}
+			user = verifiedUser
+			log.Printf("✅ Token verified from query param for user: %s", user.UID)
+		} else {
+			// Check for Bearer token in Authorization header
+			authHeader := c.GetHeader("Authorization")
+			if authHeader != "" {
+				parts := strings.Split(authHeader, " ")
+				if len(parts) == 2 && parts[0] == "Bearer" {
+					bearerToken := parts[1]
+					log.Printf("🔍 Bearer token found in Authorization header")
+
+					verifiedUser, err := authService.VerifyToken(c.Request.Context(), bearerToken)
+					if err != nil {
+						log.Printf("❌ Bearer token verification failed: %v", err)
+						c.JSON(http.StatusUnauthorized, gin.H{
+							"error":   "invalid_token",
+							"message": "Token verification failed",
+						})
+						return
+					}
+					user = verifiedUser
+					log.Printf("✅ Bearer token verified for user: %s", user.UID)
+				}
+			}
+		}
+
+		// Ensure user is authenticated and active
+		if user == nil {
+			log.Printf("❌ No authenticated user found")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "authentication_required",
 				"message": "Authentication required",
@@ -83,23 +124,22 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService)
 			return
 		}
 
-		u, ok := user.(*models.User)
-		if !ok {
-			log.Printf("❌ Invalid user type in context")
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"error":   "invalid_user_context",
-				"message": "Invalid user context",
+		if user.Status != models.StatusActive {
+			log.Printf("❌ User not active: %s", user.Status)
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "account_inactive",
+				"message": "Account is not active",
 			})
 			return
 		}
 
 		// Add user context for headers
 		ctx := c.Request.Context()
-		ctx = context.WithValue(ctx, "user_id", u.UID)
-		ctx = context.WithValue(ctx, "user_role", string(u.Role))
+		ctx = context.WithValue(ctx, "user_id", user.UID)
+		ctx = context.WithValue(ctx, "user_role", string(user.Role))
 		c.Request = c.Request.WithContext(ctx)
 
-		log.Printf("🔍 Proxy: Processing request: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, u.UID)
+		log.Printf("🔍 Proxy: Processing request: %s %s for user: %s", c.Request.Method, c.Request.URL.Path, user.UID)
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
