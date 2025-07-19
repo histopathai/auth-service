@@ -54,7 +54,12 @@ func main() {
 
 	authService := service.NewAuthService(authRepo, userRepo)
 
-	authServer := server.NewServer(cfg, authService)
+	// 🆕 Initialize session service
+	sessionService := service.NewImageSessionService(authService)
+	slog.Info("✅ Image Session Service initialized")
+
+	// 🔄 Server'ı session service ile initialize et
+	authServer := server.NewServer(cfg, authService, sessionService)
 	if err := authServer.Start(); err != nil {
 		log.Fatalf("❌ Failed to start server: %v", err)
 	}
