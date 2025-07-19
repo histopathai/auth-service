@@ -1,3 +1,4 @@
+// internal/routes/routes.go - Düzeltilmiş routes
 package routes
 
 import (
@@ -8,19 +9,18 @@ import (
 	"github.com/histopathai/auth-service/internal/proxy"
 	"github.com/histopathai/auth-service/internal/service"
 
-	// Swagger dokümantasyonu için gerekli importlar
-	_ "github.com/histopathai/auth-service/docs" // Oluşturulan docs/swagger.go dosyasını import edin
-	swaggerFiles "github.com/swaggo/files"       // gin-swagger için gerekli dosyalar
-	ginSwagger "github.com/swaggo/gin-swagger"   // gin ile Swagger entegrasyonu
+	_ "github.com/histopathai/auth-service/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // SetupRoutes configures all routes for the application
-func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLimiter, imgCatalogURL string) *gin.Engine {
-
+func SetupRoutes(authService service.AuthService, sessionService *service.ImageSessionService, rateLimiter *middleware.RateLimiter, imgCatalogURL string) *gin.Engine {
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
 	adminHandler := handlers.NewAdminHandler(authService)
 	healthHandler := handlers.NewHealthHandler()
+	sessionHandler := handlers.NewSessionHandler(sessionService) // 🆕 Session handler
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(authService)
@@ -52,63 +52,56 @@ func SetupRoutes(authService service.AuthService, rateLimiter *middleware.RateLi
 
 		// Token verification
 		auth.POST("/verify", authHandler.VerifyToken)
+
+		// 🆕 Image Session endpoints (protected)
+		sessionRoutes := auth.Group("")
+		sessionRoutes.Use(authMiddleware.RequireAuth())
+		sessionRoutes.Use(authMiddleware.RequireStatus(models.StatusActive))
+		{
+			sessionRoutes.POST("/image-session", sessionHandler.CreateImageSession)
+			sessionRoutes.GET("/image-session/stats", sessionHandler.GetSessionStats)
+			sessionRoutes.DELETE("/image-session/:session_id", sessionHandler.RevokeSession)
+			sessionRoutes.POST("/image-session/revoke-all", sessionHandler.RevokeAllSessions)
+		}
 	}
 
 	// Protected routes (require authentication)
 	user := api.Group("/user")
 	user.Use(authMiddleware.RequireAuth())
-	user.Use(authMiddleware.RequireStatus(models.StatusActive)) // Ensure user is active)
+	user.Use(authMiddleware.RequireStatus(models.StatusActive))
 	{
-		// Get own profile
 		user.GET("/profile", authHandler.GetProfile)
-
-		// Change own password
 		user.PUT("/password", authHandler.ChangePasswordSelf)
-
-		// Delete own account
 		user.DELETE("/account", authHandler.DeleteAccount)
 	}
 
 	// Admin routes (require admin role)
 	admin := api.Group("/admin")
 	admin.Use(authMiddleware.RequireAuth())
-	admin.Use(authMiddleware.RequireRole(models.RoleAdmin))      // Ensure user is admin
-	admin.Use(authMiddleware.RequireStatus(models.StatusActive)) // Ensure user is active
+	admin.Use(authMiddleware.RequireRole(models.RoleAdmin))
+	admin.Use(authMiddleware.RequireStatus(models.StatusActive))
 	{
-
 		users := admin.Group("/users")
 		{
-
-			// User management
 			users.GET("/", adminHandler.GetAllUsers)
-
-			// Get specific user by UID
 			users.GET("/:uid", adminHandler.GetUser)
-
-			// Approve user account
 			users.POST("/:uid/approve", adminHandler.ApproveUser)
-
-			// Suspend user account
 			users.POST("/:uid/suspend", adminHandler.SuspendUser)
-
-			// Change user password (admin)
 			users.PUT("/:uid/password", adminHandler.ChangePasswordForUser)
-
-			// Promote user to admin
 			users.POST("/:uid/promote", adminHandler.MakeAdmin)
-
 		}
 	}
 
-	imageCatalog := api.Group("/image-catalog")
+	// 🚀 Optimized Image Catalog Routes (NO RATE LIMITING)
+	// Bu routes rate limiting DIŞINDA - çünkü OpenSeadragon 50+ request yapar
+	imageCatalogGroup := router.Group("/api/v1/image-catalog")
 	{
-		imageCatalogURL := imgCatalogURL
-
-		// Handle all routes through the proxy with flexible authentication
-		imageCatalog.Any("/*proxyPath", proxy.NewImageCatalogProxy(imageCatalogURL, authService))
-		imageCatalog.Any("", proxy.NewImageCatalogProxy(imageCatalogURL, authService))
+		// Session-based authentication, no rate limiting
+		imageCatalogGroup.Any("/*proxyPath", proxy.NewImageCatalogProxy(imgCatalogURL, sessionService))
+		imageCatalogGroup.Any("", proxy.NewImageCatalogProxy(imgCatalogURL, sessionService))
 	}
 
+	// Swagger UI route
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return router
