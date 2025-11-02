@@ -19,31 +19,28 @@ import (
 	"github.com/histopathai/auth-service/internal/service"
 )
 
-func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService, sessionService *service.ImageSessionService) gin.HandlerFunc {
+func NewMainServiceProxy(targetBaseURL string, authService service.AuthService, sessionService *service.ImageSessionService) gin.HandlerFunc {
 	target, err := url.Parse(targetBaseURL)
 	if err != nil {
 		log.Printf("❌ HATA: Hedef URL geçersiz: %v", err)
-		panic(fmt.Sprintf("Invalid target URL for image-catalog-service: %v", err))
+		panic(fmt.Sprintf("Invalid target URL for main-service: %v", err))
 	}
 
-	// URL'nin doğru olduğundan emin ol - sonunda / yoksa ekle
 	if !strings.HasSuffix(targetBaseURL, "/") {
 		targetBaseURL = targetBaseURL + "/"
-		log.Printf("🔧 Hedef URL düzeltildi: %s", targetBaseURL)
+		log.Printf("🔧 Target URL Fixed: %s", targetBaseURL)
 	}
 
-	log.Printf("🔧 Image Catalog Proxy hedefi: %s", targetBaseURL)
+	log.Printf("🔧 Main Service Proxy hedefi: %s", targetBaseURL)
 
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			originalPath := req.URL.Path
 			originalMethod := req.Method
 
-			// URL ve metodu logla
-			log.Printf("📥 Proxy istek: %s %s", originalMethod, originalPath)
+			log.Printf("📥 Proxy request: %s %s", originalMethod, originalPath)
 
-			// Path transformation
-			trimmed := strings.TrimPrefix(originalPath, "/api/v1/image-catalog")
+			trimmed := strings.TrimPrefix(originalPath, "/api/v1/main")
 			if trimmed == "" {
 				trimmed = "/"
 			}
@@ -54,22 +51,19 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService,
 			req.URL.Path = newPath
 			req.Host = target.Host
 
-			// Query parametrelerini logla
 			if req.URL.RawQuery != "" {
-				log.Printf("🔍 Sorgu parametreleri: %s", req.URL.RawQuery)
+				log.Printf("🔍 Query parameters: %s", req.URL.RawQuery)
 			}
 
-			// Session parametresini kontrol et
 			sessionID := req.URL.Query().Get("session")
 			if sessionID == "" {
-				log.Printf("⚠️ İstekte session parametresi bulunamadı! URL: %s", originalPath)
+				log.Printf("⚠️ Session ID not found! URL: %s", originalPath)
 			} else {
-				// Session başarıyla alındı, X-Image-Session-ID header'ına ekle ve query'den kaldır
 				req.Header.Set("X-Image-Session-ID", sessionID)
 				values := req.URL.Query()
 				values.Del("session")
 				req.URL.RawQuery = values.Encode()
-				log.Printf("✅ Session parametresi alındı ve header'a eklendi: %s...", sessionID[:8])
+				log.Printf("✅ Session ID found and added to header: %s...", sessionID[:8])
 			}
 
 			// User bilgilerini header'lara ekle
@@ -83,47 +77,41 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService,
 				log.Printf("🔑 User Role header eklendi: %s", role.(string))
 			}
 
-			log.Printf("📤 Proxy hedef: %s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path)
+			log.Printf("📤 Target Proxy: %s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path)
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			statusCode := resp.StatusCode
 			requestURL := resp.Request.URL.String()
 
-			// Başarılı yanıtlar için sadece bilgi logu
 			if statusCode >= 200 && statusCode < 300 {
-				log.Printf("✅ Proxy yanıtı: %d for %s", statusCode, requestURL)
+				log.Printf("✅ Proxy response: %d for %s", statusCode, requestURL)
 
-				// İmaj proxy istekleri için cache headerları ekle
 				if strings.Contains(resp.Request.URL.Path, "/proxy/") {
-					resp.Header.Set("Cache-Control", "public, max-age=3600") // 1 saat cache
+					resp.Header.Set("Cache-Control", "public, max-age=3600")
 					resp.Header.Set("ETag", `"`+resp.Request.URL.Path+`"`)
 				}
 				return nil
 			}
 
-			// Hatalı yanıtlar için detaylı loglama
-			log.Printf("❌ Proxy hata yanıtı: %d for %s", statusCode, requestURL)
+			log.Printf("❌ Proxy error response: %d for %s", statusCode, requestURL)
 
-			// Hata içeriğini oku ve logla
 			var body []byte
 			if resp.Body != nil {
 				body, _ = io.ReadAll(resp.Body)
-				// Yanıt gövdesini geri koy
 				resp.Body = io.NopCloser(bytes.NewBuffer(body))
 
-				// Hata içeriğini logla (ilk 500 karakter)
 				maxLength := 500
 				logContent := string(body)
 				if len(logContent) > maxLength {
 					logContent = logContent[:maxLength] + "..."
 				}
-				log.Printf("❌ Hata içeriği: %s", logContent)
+				log.Printf("❌ Error content: %s", logContent)
 			}
 
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			log.Printf("❌ Proxy isteği başarısız: %v, URL: %s", err, r.URL.String())
+			log.Printf("❌ Proxy request failed: %v, URL: %s", err, r.URL.String())
 
 			// JSON formatında hata döndür
 			w.Header().Set("Content-Type", "application/json")
@@ -138,7 +126,7 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService,
 
 			errorResponse := map[string]interface{}{
 				"error":      "service_unavailable",
-				"message":    "Image catalog service geçici olarak ulaşılamıyor",
+				"message":    "The main service is currently unavailable. Please try again later.",
 				"details":    errorType,
 				"error_info": err.Error(),
 			}
@@ -169,72 +157,67 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService,
 
 			session, valid := sessionService.ValidateSession(sessionID)
 			if valid && session != nil {
-				log.Printf("✅ Session doğrulandı, kullanıcı: %s", session.UserID)
+				log.Printf("✅ Session verified user: %s", session.UserID)
 
-				// Basit user objesi oluştur
 				user = &models.User{
 					UID:    session.UserID,
 					Role:   models.UserRole(session.Role),
-					Status: models.StatusActive, // Session varsa aktif kabul et
+					Status: models.StatusActive,
 				}
 
 				// Auto-extend session
 				if session.RequestCount%50 == 0 {
 					sessionService.ExtendSession(sessionID)
-					log.Printf("🔄 Session otomatik uzatıldı")
+					log.Printf("🔄 Session automatically extended")
 				}
 			} else {
-				log.Printf("❌ Geçersiz session: %s", sessionID[:8])
+				log.Printf("❌ Invalid session: %s", sessionID[:8])
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error":   "invalid_session",
-					"message": "Geçersiz veya süresi dolmuş session",
+					"message": "Invalid or expired session ID",
 				})
 				return
 			}
 		}
 
-		// 2. Session yoksa veya geçersizse, Bearer token kontrolü
 		if user == nil {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader != "" {
 				parts := strings.Split(authHeader, " ")
 				if len(parts) == 2 && parts[0] == "Bearer" {
 					bearerToken := parts[1]
-					log.Printf("🔍 Bearer token bulundu - doğrulanıyor...")
+					log.Printf("🔍 Bearer token found - verifying...")
 
-					// AuthService ile token'ı verify et
 					verifiedUser, err := authService.VerifyToken(c.Request.Context(), bearerToken)
 					if err == nil && verifiedUser != nil {
 						user = verifiedUser
-						log.Printf("✅ Bearer token doğrulandı, kullanıcı: %s", user.UID)
+						log.Printf("✅ Bearer token verified, user: %s", user.UID)
 					} else {
-						log.Printf("❌ Bearer token doğrulaması başarısız: %v", err)
+						log.Printf("❌ Bearer token verification failed: %v", err)
 					}
 				}
 			}
 		}
 
-		// 3. Hiçbir kimlik doğrulama bulunamadıysa, hata döndür
 		if user == nil {
-			log.Printf("❌ Geçerli kimlik doğrulama bulunamadı")
+			log.Printf("❌ Valid authentication not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "authentication_required",
-				"message": "Geçerli Bearer token veya session gerekli",
+				"message": "Valid Bearer token or session required",
 			})
 			return
 		}
 
-		// 4. User status kontrolü
+		// 4. User status
 		if user.Status != models.StatusActive {
-			log.Printf("❌ Kullanıcı aktif değil: %s", user.Status)
+			log.Printf("❌ User Not Active: %s", user.Status)
 			c.JSON(http.StatusForbidden, gin.H{
 				"error":   "account_inactive",
-				"message": "Hesap aktif değil",
+				"message": "Account is inactive. Please contact support.",
 			})
 			return
 		}
 
-		// 5. Context'e user bilgilerini ekle
 		ctx := context.WithValue(c.Request.Context(), "user_id", user.UID)
 		ctx = context.WithValue(ctx, "user_role", string(user.Role))
 		c.Request = c.Request.WithContext(ctx)
@@ -243,11 +226,11 @@ func NewImageCatalogProxy(targetBaseURL string, authService service.AuthService,
 		defer func() {
 			duration := time.Since(start)
 			if duration > 100*time.Millisecond {
-				log.Printf("⚠️ Yavaş istek: %s için %v sürdü", c.Request.URL.Path, duration)
+				log.Printf("⚠️ Slow request: %s took %v", c.Request.URL.Path, duration)
 			}
 		}()
 
-		log.Printf("🔍 Proxy istek yönlendiriliyor: %s %s kullanıcı: %s", c.Request.Method, c.Request.URL.Path, user.UID)
+		log.Printf("🔍 Proxy request is being forwarded: %s %s user: %s", c.Request.Method, c.Request.URL.Path, user.UID)
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
