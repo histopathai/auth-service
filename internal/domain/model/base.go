@@ -7,4 +7,5 @@ type Entity interface {
 	SetID(id string)
 	SetCreatedAt(t time.Time)
 	SetUpdatedAt(t time.Time)
+	SetExpiresAt(t time.Time)
 }
