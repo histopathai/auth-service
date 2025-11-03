@@ -4,9 +4,7 @@ import "time"
 
 type Session struct {
 	SessionID    string
-	Scope        string
 	UserID       string
-	Role         string
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
 	LastUsedAt   time.Time

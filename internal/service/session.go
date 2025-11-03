@@ -32,7 +32,7 @@ func NewSessionService(sessionRepo repository.SessionRepository, authService Aut
 	}
 }
 
-func (s *SessionService) CreateSession(ctx context.Context, userID, role, scope string) (string, error) {
+func (s *SessionService) CreateSession(ctx context.Context, userID string) (string, error) {
 
 	sessionID, err := s.generateSessionID(32)
 	if err != nil {
@@ -42,9 +42,7 @@ func (s *SessionService) CreateSession(ctx context.Context, userID, role, scope 
 	now := time.Now()
 	session := &model.Session{
 		SessionID:    sessionID,
-		Scope:        scope,
 		UserID:       userID,
-		Role:         role,
 		CreatedAt:    now,
 		ExpiresAt:    now.Add(DefaultSessionDuration),
 		LastUsedAt:   now,
@@ -52,7 +50,7 @@ func (s *SessionService) CreateSession(ctx context.Context, userID, role, scope 
 		Metadata:     make(map[string]interface{}),
 	}
 
-	if err := s.enforceMaxSessions(ctx, userID, scope, MaxSessionsPerUser); err != nil {
+	if err := s.enforceMaxSessions(ctx, userID, MaxSessionsPerUser); err != nil {
 		return "", err
 	}
 
@@ -106,16 +104,9 @@ func (s *SessionService) RevokeSession(ctx context.Context, sessionID string) er
 	return nil
 }
 
-func (s *SessionService) RevokeAllUserSessions(ctx context.Context, userID, scope string) error {
-	if err := s.sessionRepo.DeleteByUser(ctx, userID, scope); err != nil {
+func (s *SessionService) RevokeAllUserSessions(ctx context.Context, userID string) error {
+	if err := s.sessionRepo.DeleteByUser(ctx, userID); err != nil {
 		return errors.NewInternalError("failed to revoke user sessions", err)
-	}
-	return nil
-}
-
-func (s *SessionService) RevokeUserSessionsByScope(ctx context.Context, userID, scope string) error {
-	if err := s.sessionRepo.DeleteByUser(ctx, userID, scope); err != nil {
-		return errors.NewInternalError("failed to revoke user sessions by scope", err)
 	}
 	return nil
 }
@@ -135,8 +126,6 @@ func (s *SessionService) GetUserSessionStats(ctx context.Context, userID string)
 	for _, session := range sessions {
 		sessionList = append(sessionList, map[string]interface{}{
 			"session_id":    session.SessionID,
-			"scope":         session.Scope,
-			"role":          session.Role,
 			"created_at":    session.CreatedAt,
 			"expires_at":    session.ExpiresAt,
 			"last_used":     session.LastUsedAt,
@@ -148,24 +137,12 @@ func (s *SessionService) GetUserSessionStats(ctx context.Context, userID string)
 	return stats, nil
 }
 
-func (s *SessionService) GetActiveSessionCount(ctx context.Context, userID, scope string) (int, error) {
+func (s *SessionService) GetActiveSessionCount(ctx context.Context, userID string) (int, error) {
 	sessions, err := s.sessionRepo.ListByUser(ctx, userID)
 	if err != nil {
 		return 0, err
 	}
-
-	if scope == "" {
-		return len(sessions), nil
-	}
-
-	count := 0
-	for _, session := range sessions {
-		if session.Scope == scope {
-			count++
-		}
-	}
-
-	return count, nil
+	return len(sessions), nil
 }
 
 func (s *SessionService) generateSessionID(length int) (string, error) {
@@ -176,29 +153,20 @@ func (s *SessionService) generateSessionID(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func (s *SessionService) enforceMaxSessions(ctx context.Context, userID, scope string, maxSessions int) error {
+func (s *SessionService) enforceMaxSessions(ctx context.Context, userID string, maxSessions int) error {
 	sessions, err := s.sessionRepo.ListByUser(ctx, userID)
 	if err != nil {
 		return err
 	}
-
-	scopeSessions := make([]*model.Session, 0)
-	for _, session := range sessions {
-		if session.Scope == scope {
-			scopeSessions = append(scopeSessions, session)
-		}
+	if len(sessions) < maxSessions {
+		return nil
 	}
 
-	if len(scopeSessions) >= maxSessions {
-		toDelete := len(scopeSessions) - maxSessions + 1
-
-		oldestSessions := s.findOldestSessions(scopeSessions, toDelete)
-
-		for _, session := range oldestSessions {
-			if err := s.sessionRepo.Delete(ctx, session.SessionID); err != nil {
-
-				s.logger.Warn("failed to delete old session", "sessionID", session.SessionID, "error", err)
-			}
+	toDelete := len(sessions) - maxSessions + 1
+	oldestSessions := s.findOldestSessions(sessions, toDelete)
+	for _, session := range oldestSessions {
+		if err := s.sessionRepo.Delete(ctx, session.SessionID); err != nil {
+			s.logger.Warn("failed to delete old session", "sessionID", session.SessionID, "error", err)
 		}
 	}
 

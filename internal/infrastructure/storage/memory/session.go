@@ -126,7 +126,7 @@ func (r *inMemorySessionRepository) deleteSessionUnsafe(sessionID string) error 
 	return nil
 }
 
-func (r *inMemorySessionRepository) DeleteByUser(ctx context.Context, userID string, scope string) error {
+func (r *inMemorySessionRepository) DeleteByUser(ctx context.Context, userID string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -137,10 +137,7 @@ func (r *inMemorySessionRepository) DeleteByUser(ctx context.Context, userID str
 
 	toDelete := make([]string, 0)
 	for sessionID := range userSessions {
-		session := r.sessions[sessionID]
-		if scope == "" || session.Scope == scope {
-			toDelete = append(toDelete, sessionID)
-		}
+		toDelete = append(toDelete, sessionID)
 	}
 
 	for _, sessionID := range toDelete {
