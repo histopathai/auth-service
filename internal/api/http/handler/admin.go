@@ -5,8 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	response "github.com/histopathai/auth-service/internal/api/http/dto/reponse"
-	"github.com/histopathai/auth-service/internal/api/http/dto/request"
+	"github.com/histopathai/auth-service/internal/api/http/dto"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
 	"github.com/histopathai/auth-service/internal/shared/query"
@@ -26,42 +25,53 @@ func NewAdminHandler(authService service.AuthService, logger *slog.Logger) *Admi
 
 // ListUsers
 // @Summary List Users
-// @Description Retrieves a list of all registered users (Admin access required)
-// @Tags Admin - Users
+// @Description Get paginated list of all users (Admin only)
+// @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param        limit query int false "Number of items per page" default(20) minimum(1) maximum(100)
-// @Param        offset query int false "Number of items to skip" default(0) minimum(0)
-// @Param        sort_by query string false "Field to sort by" default(created_at) Enums(created_at, updated_at, name)
-// @Param        sort_dir query string false "Sort direction" default(desc) Enums(asc, desc)
-// @Success 200 {object} response.SuccessListResponse{data=[]models.User,pagination=response.PaginationResponse} "Successfully retrieved users"
-// @Faılure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Param limit query int false "Items per page" default(20) minimum(1) maximum(100)
+// @Param offset query int false "Items to skip" default(0) minimum(0)
+// @Param sort_by query string false "Sort field" default(created_at) Enums(created_at, updated_at, email, display_name)
+// @Param sort_order query string false "Sort direction" default(desc) Enums(asc, desc)
+// @Param status query string false "Filter by status" Enums(pending, active, suspended)
+// @Param role query string false "Filter by role" Enums(user, admin)
+// @Param search query string false "Search in email and display name"
+// @Success 200 {object} dto.UserListResponse "Users retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
-	var paginationDTO request.QueryPaginationRequest
-	if err := c.ShouldBindQuery(&paginationDTO); err != nil {
-		h.handleError(c, err)
+	var req dto.ListUsersRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		h.handleError(c, errors.NewValidationError("Invalid query parameters", nil))
 		return
 	}
 
-	paginationDTO.ApplyDefaults()
+	req.ApplyDefaults()
 
-	allowedSortFields := []string{"created_at", "updated_at", "name"}
-	if err := paginationDTO.ValidateSortFields(allowedSortFields); err != nil {
-		h.handleError(c, err)
+	allowedFields := req.GetAllowedSortFields()
+	isValid := false
+	for _, field := range allowedFields {
+		if field == req.SortBy {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		h.handleError(c, errors.NewValidationError("Invalid sort field", map[string]interface{}{
+			"sort_by": "must be one of: created_at, updated_at, email, display_name",
+		}))
 		return
 	}
 
-	//DTO -> Service
 	pagination := &query.Pagination{
-		Limit:     paginationDTO.Limit,
-		Offset:    paginationDTO.Offset,
-		SortBy:    paginationDTO.SortBy,
-		SortOrder: paginationDTO.SortOrder,
+		Limit:     req.Limit,
+		Offset:    req.Offset,
+		SortBy:    req.SortBy,
+		SortOrder: req.SortOrder,
 	}
 
 	result, err := h.authService.ListUsers(c.Request.Context(), pagination)
@@ -70,29 +80,37 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	// Service -> DTO
-	paginationResp := &response.PaginationResponse{
-		Limit:   result.Limit,
-		Offset:  result.Offset,
-		HasMore: result.HasMore,
+	users := make([]dto.UserResponse, len(result.Data))
+	for i, user := range result.Data {
+		users[i] = mapToUserResponse(user)
 	}
 
-	h.response.SuccessList(c, result.Data, paginationResp)
+	response := dto.UserListResponse{
+		Data: users,
+		Pagination: dto.PaginationResponse{
+			Limit:   result.Limit,
+			Offset:  result.Offset,
+			HasMore: result.HasMore,
+		},
+	}
+
+	h.response.Success(c, http.StatusOK, response)
 }
 
 // GetUser
 // @Summary Get User by UID
-// @Description Retrieves a single user by their UID (Admin access required)
-// @Tags Admin - Users
+// @Description Get detailed user information by UID (Admin only)
+// @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} response.Success{data=model.User} "User retrieved successfully"
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} dto.UserDetailResponse "User retrieved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid} [get]
 func (h *AdminHandler) GetUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -107,22 +125,27 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 		return
 	}
 
-	h.response.Success(c, http.StatusOK, user)
+	response := dto.UserDetailResponse{
+		UserResponse: mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
 }
 
 // ApproveUser
 // @Summary Approve User
-// @Description Approves a user account (Admin access required)
-// @Tags Admin - Users
+// @Description Approve pending user account (Admin only)
+// @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 204 {object} response.NoContent
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} dto.UserActionResponse "User approved successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/approve [post]
 func (h *AdminHandler) ApproveUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -137,24 +160,69 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 		return
 	}
 
+	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+
+	response := dto.UserActionResponse{
+		Message: "User approved successfully",
+		User:    mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
+// ChangePasswordForUser
+// @Summary Change User Password (Admin)
+// @Description Admin changes specific user's password
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param uid path string true "User UID"
+// @Param payload body dto.ChangeUserPasswordRequest true "New password"
+// @Success 204 "Password changed successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Router /admin/users/{uid}/change-password [post]
+func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
+	uid := c.Param("uid")
+	if uid == "" {
+		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+		return
+	}
+
+	var req dto.ChangeUserPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
+		return
+	}
+
+	err := h.authService.ChangeUserPassword(c.Request.Context(), uid, req.NewPassword)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
 	h.response.NoContent(c)
 }
 
 // SuspendUser
 // @Summary Suspend User
-// @Description Suspends a user account (Admin access required)
-// @Tags Admin - Users
+// @Description Suspend an active user account (Admin only)
+// @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 204 {object} response.NoContent "User suspended successfully"
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} dto.UserActionResponse "User suspended successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/suspend [post]
-
 func (h *AdminHandler) SuspendUser(c *gin.Context) {
 	uid := c.Param("uid")
 	if uid == "" {
@@ -168,53 +236,31 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 		return
 	}
 
-	h.response.NoContent(c)
+	// Updated user'ı getir
+	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+
+	response := dto.UserActionResponse{
+		Message: "User suspended successfully",
+		User:    mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
 }
 
-// ChangePasswordForUser
-// @Summary Change User Password (Admin)
-// @Description Endpoint for an administrator to change a specific user's password.
+// MakeAdmin
+// @Summary Make User Admin
+// @Description Grant admin role to a user (Admin only)
 // @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param new_password body request.ChangePasswordRequest true "New password"
-// @Success 204 {object} response.NoContent "User password changed successfully"
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/change-password [post]
-func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
-
-	var req request.ChangePasswordForUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
-		return
-	}
-
-	err := h.authService.ChangeUserPassword(c.Request.Context(), req.UID, req.NewPassword)
-	if err != nil {
-		h.handleError(c, err)
-		return
-	}
-
-	h.response.NoContent(c)
-}
-
-// MakeAdmin
-// @Summary Grant Admin Role to User
-// @Description Grants admin role to a user (Admin access required)
-// @Tags Admin - Users
-// @Accept json
-// @Produce json
-// @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 204 {object} response.NoContent "User granted admin role successfully"
-// @Failure 400 {object} response.ErrorResponse "Bad request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} dto.UserActionResponse "User granted admin role successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 403 {object} dto.ErrorResponse "Forbidden"
+// @Failure 404 {object} dto.ErrorResponse "User not found"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/make-admin [post]
 func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 	uid := c.Param("uid")
@@ -229,5 +275,13 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 		return
 	}
 
-	h.response.NoContent(c)
+	// Updated user'ı getir
+	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+
+	response := dto.UserActionResponse{
+		Message: "User granted admin role successfully",
+		User:    mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
 }

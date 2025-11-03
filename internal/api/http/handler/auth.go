@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/histopathai/auth-service/internal/api/http/dto/request"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
+	"github.com/yasin/histopathai/auth-service/internal/api/http/dto"
 )
 
 type AuthHandler struct {
@@ -25,54 +25,56 @@ func NewAuthHandler(authService service.AuthService, logger *slog.Logger) *AuthH
 
 // Register
 // @Summary User Registration
-// @Description Endpoint for user registration
+// @Description Register a new user account
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param payload body request.RegisterUserRequest true "User registration payload"
-// @Success 201 {object} response.SuccessResponse{data=models.User} "User registered successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid request payload"
-// @Failure 500 {object} response.ErrorResponse "User registration failed"
+// @Param payload body dto.RegisterRequest true "Registration details"
+// @Success 201 {object} dto.RegisterResponse "User registered successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request"
+// @Failure 409 {object} dto.ErrorResponse "Email already exists"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req request.RegisterUserRequest
+	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, err)
+		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
 	}
 
-	// DTO -> Service
-
-	userRegister := &model.RegisterUser{
+	user, err := h.authService.RegisterUser(c.Request.Context(), &model.RegisterUser{
 		Email:       req.Email,
 		Password:    req.Password,
 		DisplayName: req.DisplayName,
-	}
-
-	user, err := h.authService.RegisterUser(c.Request.Context(), userRegister)
+	})
 	if err != nil {
 		h.handleError(c, err)
 		return
 	}
 
-	h.response.Success(c, http.StatusCreated, user)
+	response := dto.RegisterResponse{
+		User:    mapToUserResponse(user),
+		Message: "User registered successfully",
+	}
+
+	h.response.Success(c, http.StatusCreated, response)
 }
 
 // VerifyToken
 // @Summary Verify Token
-// @Description Endpoint to verify authentication token
+// @Description Verify authentication token validity
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param payload body request.VerifyTokenRequest true "Token verification payload"
-// @Success 200 {object} response.SuccessResponse{data=string} "Token is valid"
-// @Failure 400 {object} response.ErrorResponse "Invalid request payload"
-// @Failure 401 {object} response.ErrorResponse "Invalid or expired token"
+// @Param payload body dto.VerifyTokenRequest true "Token to verify"
+// @Success 200 {object} dto.VerifyTokenResponse "Token is valid"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request"
+// @Failure 401 {object} dto.ErrorResponse "Invalid or expired token"
 // @Router /auth/verify [post]
 func (h *AuthHandler) VerifyToken(c *gin.Context) {
-	var req request.VerifyTokenRequest
+	var req dto.VerifyTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, err)
+		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
 	}
 
@@ -82,26 +84,31 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	h.response.Success(c, http.StatusOK, user)
+	response := dto.VerifyTokenResponse{
+		Valid: true,
+		User:  mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
 }
 
 // ChangePasswordSelf
 // @Summary Change Own Password
-// @Description Endpoint for a user to change their own password.
+// @Description Change authenticated user's password
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param payload body request.ChangePasswordSelfRequest true "Change password payload"
-// @Success 204 {object} response.NoContent "Password changed successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid request payload"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 500 {object} response.ErrorResponse "Password change failed"
+// @Param payload body dto.ChangePasswordRequest true "New password"
+// @Success 204 "Password changed successfully"
+// @Failure 400 {object} dto.ErrorResponse "Invalid request"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/password [put]
 func (h *AuthHandler) ChangePasswordSelf(c *gin.Context) {
-	var req request.ChangePasswordSelfRequest
+	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, err)
+		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
 	}
 
@@ -149,14 +156,16 @@ func (h *AuthHandler) DeleteAccount(c *gin.Context) {
 
 // GetProfile
 // @Summary Get User Profile
-// @Description Endpoint to retrieve the authenticated user's profile.
+//
+//	@Description Get authenticated user's profile
+//
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} response.SuccessResponse{data=models.User} "User profile retrieved successfully"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 500 {object} response.ErrorResponse "Failed to retrieve user profile"
+// @Success 200 {object} dto.ProfileResponse "Profile retrieved successfully"
+// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
+// @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /user/profile [get]
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	userID, exist := c.Get("user_id")
@@ -171,5 +180,23 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	h.response.Success(c, http.StatusOK, user)
+	response := dto.ProfileResponse{
+		UserResponse: mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
+func mapToUserResponse(user *model.User) dto.UserResponse {
+	return dto.UserResponse{
+		UID:           user.UID,
+		Email:         user.Email,
+		DisplayName:   user.DisplayName,
+		Status:        user.Status,
+		Role:          user.Role,
+		AdminApproved: user.AdminApproved,
+		ApprovalDate:  user.ApprovalDate,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+	}
 }
