@@ -7,11 +7,11 @@ import (
 )
 
 type Config struct {
-	ProjectID       string
-	Region          string
-	ProjectNumber   string
-	ImageCatalogURL string
-	Server          ServerConfig
+	ProjectID      string
+	Region         string
+	ProjectNumber  string
+	MainServiceURL string
+	Server         ServerConfig
 }
 
 type ServerConfig struct {
@@ -26,9 +26,9 @@ func LoadConfig() (*Config, error) {
 	env := os.Getenv("ENV")
 
 	config := &Config{
-		ProjectID:       os.Getenv("PROJECT_ID"),
-		Region:          os.Getenv("REGION"),
-		ImageCatalogURL: os.Getenv("IMAGE_CATALOG_SERVICE_URL"),
+		ProjectID:      os.Getenv("PROJECT_ID"),
+		Region:         os.Getenv("REGION"),
+		MainServiceURL: os.Getenv("MAIN_SERVICE_URL"),
 		Server: ServerConfig{
 			Port:         getEnvOrDefault("PORT", "8080"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 15),
@@ -40,13 +40,14 @@ func LoadConfig() (*Config, error) {
 
 	if env != "LOCAL" {
 		project_number := os.Getenv("PROJECT_NUMBER")
-		service_name := os.Getenv("IMAGE_CATALOG_SERVICE_NAME")
+		service_name := os.Getenv("MAIN_SERVICE_NAME")
 		region := os.Getenv("REGION")
 		if project_number == "" || service_name == "" || region == "" {
-			return nil, fmt.Errorf("PROJECT_NUMBER, IMAGE_CATALOG_SERVICE_NAME, and REGION must be set in non-local environments")
+			return nil, fmt.Errorf("PROJECT_NUMBER, MAIN_SERVICE_NAME, and REGION must be set in non-local environments")
 		}
 
-		config.ImageCatalogURL = fmt.Sprintf("https://%s-%s.%s.run.app", service_name, project_number, region)
+		config.MainServiceURL = fmt.Sprintf("https://%s-%s.%s.run.app", service_name, project_number, region)
+		// config.Server.GINMode = "release"
 		config.Server.GINMode = "release"
 	}
 	return config, nil
