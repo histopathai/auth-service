@@ -7,9 +7,9 @@ import (
 )
 
 type AuthRepository interface {
-	Register(ctx context.Context, payload *model.RegisterUser) (*model.User, error)
+	Register(ctx context.Context, payload *model.RegisterUser) (*model.UserAuthInfo, error)
 
-	VerifyIDToken(ctx context.Context, idToken string) (*model.User, error)
+	VerifyIDToken(ctx context.Context, idToken string) (*model.UserAuthInfo, error)
 
 	ChangePassword(ctx context.Context, uid, newPassword string) error
 
