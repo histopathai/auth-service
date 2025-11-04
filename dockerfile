@@ -22,16 +22,17 @@ RUN swag init --output ./docs --dir ./ --generalInfo ./cmd/main.go
 
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./cmd/main.go
 
+
 # Stage 2: Create the final image
 FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/auth-service .
-COPY --from=builder /app/docs ./docs
-
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
 
+COPY --from=builder --chown=appuser:appgroup /app/auth-service .
+COPY --from=builder --chown=appuser:appgroup /app/docs ./docs
+
+USER appuser
 
 CMD ["./auth-service"]
