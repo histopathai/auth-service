@@ -15,6 +15,26 @@ import (
 	"github.com/histopathai/auth-service/pkg/logger"
 )
 
+// @title Histopath AI API
+// @version 1.0
+// @description API for auth session management and user authentication.
+// @termsOfService http://histopathai.com/terms/
+
+// @contact.name API Support
+// @contact.url http://www.histopathai.com/support
+// @contact.email histopathai@gmail.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 func main() {
 
 	cfg, err := config.LoadConfig()
