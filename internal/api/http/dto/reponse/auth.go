@@ -1,4 +1,4 @@
-package dto
+package response
 
 // RegisterResponse represents user registration response
 type RegisterResponse struct {

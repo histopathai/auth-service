@@ -1,4 +1,4 @@
-package dto
+package request
 
 // RegisterRequest represents user registration request
 type RegisterRequest struct {

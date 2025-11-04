@@ -1,4 +1,4 @@
-package dto
+package request
 
 // ListUsersRequest represents query parameters for listing users
 type ListUsersRequest struct {

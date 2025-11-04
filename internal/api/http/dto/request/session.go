@@ -1,4 +1,4 @@
-package dto
+package request
 
 // CreateSessionRequest represents session creation request
 type CreateSessionRequest struct {

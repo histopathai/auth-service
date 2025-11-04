@@ -1,4 +1,4 @@
-package dto
+package response
 
 // UserListResponse represents paginated user list response
 type UserListResponse struct {
