@@ -15,5 +15,5 @@ type AuthRepository interface {
 
 	Delete(ctx context.Context, uid string) error
 
-	GetAuthInfo(ctx context.Context, uid string) (*model.User, error)
+	GetAuthInfo(ctx context.Context, uid string) (*model.UserAuthInfo, error) // <-- DOĞRU TİP
 }
