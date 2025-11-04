@@ -75,8 +75,11 @@ func (r *Router) Setup() *gin.Engine {
 	rateLimiter := middleware.NewRateLimiter(100, 200)
 	r.engine.Use(rateLimiter.RateLimit())
 
-	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.engine.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(204) // No Content
+	})
 
+	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")
 	{
