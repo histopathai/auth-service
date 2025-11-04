@@ -2,65 +2,74 @@ package main
 
 import (
 	"context"
-	"log"
+	"errors"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	firebase "firebase.google.com/go"
-	"github.com/histopathai/auth-service/adapter"
-	"github.com/histopathai/auth-service/config"
-	"github.com/histopathai/auth-service/internal/service"
-	"github.com/histopathai/auth-service/server"
+	"github.com/histopathai/auth-service/pkg/config"
+	"github.com/histopathai/auth-service/pkg/container"
+	"github.com/histopathai/auth-service/pkg/logger"
 )
 
 func main() {
-	// Load configuration from env
+
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("❌ Failed to load config: %v", err)
+		slog.Error("Failed to load configuration", "error", err)
+		os.Exit(1)
 	}
 
-	// Structured logger
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-	slog.SetDefault(logger)
+	appLogger := logger.New(&cfg.Logging)
+	slog.SetDefault(appLogger.Logger)
 
-	// Firebase App init (uses GOOGLE_APPLICATION_CREDENTIALS if set, otherwise default credentials)
-	app, err := firebase.NewApp(context.Background(), nil)
+	appLogger.Info("Logger initialized", "level", cfg.Logging.Level, "format", cfg.Logging.Format)
+
+	ctx := context.Background()
+	appContainer, err := container.New(ctx, cfg, appLogger)
 	if err != nil {
-		log.Fatalf("❌ Failed to initialize Firebase app: %v", err)
+		appLogger.Error("Failed to initialize application container", "error", err)
+		os.Exit(1)
 	}
 
-	authClient, err := app.Auth(context.Background())
-	if err != nil {
-		log.Fatalf("❌ Failed to initialize Firebase Auth client: %v", err)
+	defer func() {
+		if err := appContainer.Close(); err != nil {
+			appLogger.Error("Failed to close application container", "error", err)
+		}
+	}()
+
+	engine := appContainer.Router.Setup()
+
+	server := &http.Server{
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      engine,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
 	}
 
-	firestoreClient, err := app.Firestore(context.Background())
-	if err != nil {
-		log.Fatalf("❌ Failed to initialize Firestore client: %v", err)
+	go func() {
+		appLogger.Info("Starting HTTP server", "port", cfg.Server.Port)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			appLogger.Error("HTTP server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	appLogger.Info("Shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		appLogger.Error("Error during server shutdown", "error", err)
+		os.Exit(1)
 	}
-
-	authRepo, err := adapter.NewFirebaseAuthAdapter(authClient)
-	if err != nil {
-		log.Fatalf("❌ Failed to initialize Firebase Auth adapter: %v", err)
-	}
-
-	userRepo, err := adapter.NewFirestoreAdapter(firestoreClient, "users")
-	if err != nil {
-		log.Fatalf("❌ Failed to initialize Firestore adapter: %v", err)
-	}
-
-	authService := service.NewAuthService(authRepo, userRepo)
-
-	// 🆕 Initialize session service
-	sessionService := service.NewImageSessionService(authService)
-	slog.Info("✅ Image Session Service initialized")
-
-	// 🔄 Server'ı session service ile initialize et
-	authServer := server.NewServer(cfg, authService, sessionService)
-	if err := authServer.Start(); err != nil {
-		log.Fatalf("❌ Failed to start server: %v", err)
-	}
+	appLogger.Info("Server gracefully stopped")
 }

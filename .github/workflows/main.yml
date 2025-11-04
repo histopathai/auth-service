@@ -15,7 +15,7 @@ jobs:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       PROJECT_NUMBER: ${{ secrets.GCP_PROJECT_NUMBER }}
       REGION: ${{ secrets.GCP_REGION }}
-      IMAGE_CATALOG_SERVICE_NAME: ${{ secrets.IMG_CATALOG_SERVICE_NAME }}
+      MAIN_SERVICE_NAME: ${{ secrets.MAIN_SERVICE_NAME }}
 
     steps:
       - name: Checkout repository
@@ -46,4 +46,4 @@ jobs:
             --region ${REGION} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars=PROJECT_ID=${PROJECT_ID},REGION=${REGION},ENV=prod,GIN_MODE=release,READ_TIMEOUT=15,WRITE_TIMEOUT=15,IDLE_TIMEOUT=60,PROJECT_NUMBER=${PROJECT_NUMBER},IMAGE_CATALOG_SERVICE_NAME=${IMAGE_CATALOG_SERVICE_NAME}
+            --set-env-vars=PROJECT_ID=${PROJECT_ID},REGION=${REGION},ENV=prod,GIN_MODE=release,READ_TIMEOUT=15,WRITE_TIMEOUT=15,IDLE_TIMEOUT=60,PROJECT_NUMBER=${PROJECT_NUMBER},MAIN_SERVICE_NAME=${MAIN_SERVICE_NAME}
