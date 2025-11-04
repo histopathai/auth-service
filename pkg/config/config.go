@@ -6,12 +6,18 @@ import (
 	"strconv"
 )
 
+type LoggingConfig struct {
+	Level  string
+	Format string
+}
+
 type Config struct {
 	ProjectID      string
 	Region         string
 	ProjectNumber  string
 	MainServiceURL string
 	Server         ServerConfig
+	Logging        LoggingConfig // EKLENDİ
 }
 
 type ServerConfig struct {
@@ -36,6 +42,11 @@ func LoadConfig() (*Config, error) {
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
 			GINMode:      getEnvOrDefault("GIN_MODE", "debug"),
 		},
+		// EKLENDİ: Logging yapılandırması
+		Logging: LoggingConfig{
+			Level:  getEnvOrDefault("LOG_LEVEL", "info"),  // Örn: debug, info, warn, error
+			Format: getEnvOrDefault("LOG_FORMAT", "json"), // "json" veya "text"
+		},
 	}
 
 	if env != "LOCAL" {
@@ -47,7 +58,6 @@ func LoadConfig() (*Config, error) {
 		}
 
 		config.MainServiceURL = fmt.Sprintf("https://%s-%s.%s.run.app", service_name, project_number, region)
-		// config.Server.GINMode = "release"
 		config.Server.GINMode = "release"
 	}
 	return config, nil
