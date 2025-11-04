@@ -5,10 +5,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
+	dtoResponse "github.com/histopathai/auth-service/internal/api/http/dto/response"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
-	"github.com/yasin/histopathai/auth-service/internal/api/http/dto"
 )
 
 type AuthHandler struct {
@@ -36,7 +37,7 @@ func NewAuthHandler(authService service.AuthService, logger *slog.Logger) *AuthH
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req dto.RegisterRequest
+	var req dtoRequest.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
@@ -52,7 +53,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	response := dto.RegisterResponse{
+	response := dtoResponse.RegisterResponse{
 		User:    mapToUserResponse(user),
 		Message: "User registered successfully",
 	}
@@ -72,7 +73,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "Invalid or expired token"
 // @Router /auth/verify [post]
 func (h *AuthHandler) VerifyToken(c *gin.Context) {
-	var req dto.VerifyTokenRequest
+	var req dtoRequest.VerifyTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
@@ -84,7 +85,7 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 		return
 	}
 
-	response := dto.VerifyTokenResponse{
+	response := dtoResponse.VerifyTokenResponse{
 		Valid: true,
 		User:  mapToUserResponse(user),
 	}
@@ -106,7 +107,7 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /auth/password [put]
 func (h *AuthHandler) ChangePasswordSelf(c *gin.Context) {
-	var req dto.ChangePasswordRequest
+	var req dtoRequest.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
@@ -180,15 +181,15 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	response := dto.ProfileResponse{
+	response := dtoResponse.ProfileResponse{
 		UserResponse: mapToUserResponse(user),
 	}
 
 	h.response.Success(c, http.StatusOK, response)
 }
 
-func mapToUserResponse(user *model.User) dto.UserResponse {
-	return dto.UserResponse{
+func mapToUserResponse(user *model.User) dtoResponse.UserResponse {
+	return dtoResponse.UserResponse{
 		UID:           user.UID,
 		Email:         user.Email,
 		DisplayName:   user.DisplayName,

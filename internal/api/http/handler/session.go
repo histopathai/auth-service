@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/histopathai/auth-service/internal/api/http/dto"
+	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
+	dtoResponse "github.com/histopathai/auth-service/internal/api/http/dto/response"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
@@ -39,7 +40,7 @@ func NewSessionHandler(sessionService *service.SessionService, authService *serv
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /sessions [post]
 func (h *SessionHandler) CreateSession(c *gin.Context) {
-	var req dto.CreateSessionRequest
+	var req dtoRequest.CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
@@ -65,7 +66,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	response := dto.CreateSessionResponse{
+	response := dtoResponse.CreateSessionResponse{
 		SessionID: session.SessionID,
 		ExpiresAt: session.ExpiresAt,
 		Message:   "Session created successfully",
@@ -101,10 +102,10 @@ func (h *SessionHandler) ListMySessions(c *gin.Context) {
 
 	// Convert to response format
 	sessionList := sessions["sessions"].([]map[string]interface{})
-	responseSessions := make([]dto.SessionResponse, 0, len(sessionList))
+	responseSessions := make([]dtoResponse.SessionResponse, 0, len(sessionList))
 
 	for _, s := range sessionList {
-		responseSessions = append(responseSessions, dto.SessionResponse{
+		responseSessions = append(responseSessions, dtoResponse.SessionResponse{
 			SessionID:    s["session_id"].(string),
 			CreatedAt:    s["created_at"].(time.Time),
 			ExpiresAt:    s["expires_at"].(time.Time),
@@ -113,7 +114,7 @@ func (h *SessionHandler) ListMySessions(c *gin.Context) {
 		})
 	}
 
-	response := dto.SessionListResponse{
+	response := dtoResponse.SessionListResponse{
 		ActiveSessions: sessions["active_sessions"].(int),
 		Sessions:       responseSessions,
 	}
@@ -147,7 +148,7 @@ func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 
 	// Convert to detailed response format
 	sessionList := stats["sessions"].([]map[string]interface{})
-	detailedSessions := make([]dto.SessionDetailedStats, 0, len(sessionList))
+	detailedSessions := make([]dtoResponse.SessionDetailedStats, 0, len(sessionList))
 	var totalRequests int64
 
 	for _, s := range sessionList {
@@ -156,7 +157,7 @@ func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 		requestCount := s["request_count"].(int64)
 		totalRequests += requestCount
 
-		detailedSessions = append(detailedSessions, dto.SessionDetailedStats{
+		detailedSessions = append(detailedSessions, dtoResponse.SessionDetailedStats{
 			SessionID:    s["session_id"].(string),
 			CreatedAt:    s["created_at"].(time.Time),
 			ExpiresAt:    expiresAt,
@@ -166,7 +167,7 @@ func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 		})
 	}
 
-	response := dto.SessionStatsResponse{
+	response := dtoResponse.SessionStatsResponse{
 		ActiveSessions: stats["active_sessions"].(int),
 		TotalRequests:  totalRequests,
 		Sessions:       detailedSessions,
@@ -226,7 +227,7 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 	// Get updated session
 	updatedSession, _ := h.sessionService.ValidateSession(c.Request.Context(), sessionID)
 
-	response := dto.ExtendSessionResponse{
+	response := dtoResponse.ExtendSessionResponse{
 		SessionID: sessionID,
 		ExpiresAt: updatedSession.ExpiresAt,
 		Message:   "Session extended successfully",
@@ -280,7 +281,7 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	response := dto.RevokeSessionResponse{
+	response := dtoResponse.RevokeSessionResponse{
 		Message: "Session revoked successfully",
 	}
 
@@ -314,7 +315,7 @@ func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 		return
 	}
 
-	response := dto.RevokeAllSessionsResponse{
+	response := dtoResponse.RevokeAllSessionsResponse{
 		Message:         "All sessions revoked successfully",
 		RevokedSessions: count,
 	}
@@ -353,10 +354,10 @@ func (h *SessionHandler) ListUserSessions(c *gin.Context) {
 
 	// Convert to response format
 	sessionList := sessions["sessions"].([]map[string]interface{})
-	responseSessions := make([]dto.SessionResponse, 0, len(sessionList))
+	responseSessions := make([]dtoResponse.SessionResponse, 0, len(sessionList))
 
 	for _, s := range sessionList {
-		responseSessions = append(responseSessions, dto.SessionResponse{
+		responseSessions = append(responseSessions, dtoResponse.SessionResponse{
 			SessionID:    s["session_id"].(string),
 			CreatedAt:    s["created_at"].(time.Time),
 			ExpiresAt:    s["expires_at"].(time.Time),
@@ -365,7 +366,7 @@ func (h *SessionHandler) ListUserSessions(c *gin.Context) {
 		})
 	}
 
-	response := dto.SessionListResponse{
+	response := dtoResponse.SessionListResponse{
 		ActiveSessions: sessions["active_sessions"].(int),
 		Sessions:       responseSessions,
 	}
@@ -401,7 +402,7 @@ func (h *SessionHandler) RevokeUserSession(c *gin.Context) {
 		return
 	}
 
-	response := dto.RevokeSessionResponse{
+	response := dtoResponse.RevokeSessionResponse{
 		Message: "Session revoked successfully",
 	}
 
@@ -438,7 +439,7 @@ func (h *SessionHandler) RevokeAllUserSessions(c *gin.Context) {
 		return
 	}
 
-	response := dto.RevokeAllSessionsResponse{
+	response := dtoResponse.RevokeAllSessionsResponse{
 		Message:         "All user sessions revoked successfully",
 		RevokedSessions: count,
 	}
@@ -447,8 +448,8 @@ func (h *SessionHandler) RevokeAllUserSessions(c *gin.Context) {
 }
 
 // Helper function to map session model to response
-func mapToSessionResponse(session *model.Session) dto.SessionResponse {
-	return dto.SessionResponse{
+func mapToSessionResponse(session *model.Session) dtoResponse.SessionResponse {
+	return dtoResponse.SessionResponse{
 		SessionID:    session.SessionID,
 		UserID:       session.UserID,
 		CreatedAt:    session.CreatedAt,

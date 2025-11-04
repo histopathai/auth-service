@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/histopathai/auth-service/internal/api/http/dto"
+	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
+	dtoResponse "github.com/histopathai/auth-service/internal/api/http/dto/response"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
 	"github.com/histopathai/auth-service/internal/shared/query"
@@ -44,7 +45,7 @@ func NewAdminHandler(authService service.AuthService, logger *slog.Logger) *Admi
 // @Failure 500 {object} dto.ErrorResponse "Internal server error"
 // @Router /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
-	var req dto.ListUsersRequest
+	var req dtoRequest.ListUsersRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid query parameters", nil))
 		return
@@ -80,14 +81,14 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	users := make([]dto.UserResponse, len(result.Data))
+	users := make([]dtoResponse.UserResponse, len(result.Data))
 	for i, user := range result.Data {
 		users[i] = mapToUserResponse(user)
 	}
 
-	response := dto.UserListResponse{
+	response := dtoResponse.UserListResponse{
 		Data: users,
-		Pagination: dto.PaginationResponse{
+		Pagination: dtoResponse.PaginationResponse{
 			Limit:   result.Limit,
 			Offset:  result.Offset,
 			HasMore: result.HasMore,
@@ -125,7 +126,7 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 		return
 	}
 
-	response := dto.UserDetailResponse{
+	response := dtoResponse.UserDetailResponse{
 		UserResponse: mapToUserResponse(user),
 	}
 
@@ -162,7 +163,7 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 
 	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
 
-	response := dto.UserActionResponse{
+	response := dtoResponse.UserActionResponse{
 		Message: "User approved successfully",
 		User:    mapToUserResponse(user),
 	}
@@ -193,7 +194,7 @@ func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 		return
 	}
 
-	var req dto.ChangeUserPasswordRequest
+	var req dtoRequest.ChangeUserPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
@@ -239,7 +240,7 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 	// Updated user'ı getir
 	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
 
-	response := dto.UserActionResponse{
+	response := dtoResponse.UserActionResponse{
 		Message: "User suspended successfully",
 		User:    mapToUserResponse(user),
 	}
@@ -278,7 +279,7 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 	// Updated user'ı getir
 	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
 
-	response := dto.UserActionResponse{
+	response := dtoResponse.UserActionResponse{
 		Message: "User granted admin role successfully",
 		User:    mapToUserResponse(user),
 	}
