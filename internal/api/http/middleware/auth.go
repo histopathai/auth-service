@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/histopathai/auth-service/internal/domain/model"
+
 	"github.com/histopathai/auth-service/internal/service"
 )
 
