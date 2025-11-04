@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/histopathai/auth-service/docs"
 	"github.com/histopathai/auth-service/pkg/config"
 	"github.com/histopathai/auth-service/pkg/container"
 	"github.com/histopathai/auth-service/pkg/logger"
