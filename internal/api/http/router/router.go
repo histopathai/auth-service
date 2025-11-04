@@ -16,6 +16,7 @@ type Router struct {
 	authHandler    *handler.AuthHandler
 	adminHandler   *handler.AdminHandler
 	healthHandler  *handler.HealthHandler
+	sessionHandler *handler.SessionHandler
 	authMiddleware *middleware.AuthMiddleware
 	logger         *slog.Logger
 	mainProxy      *proxy.MainServiceProxy
@@ -33,6 +34,7 @@ func NewRouter(config *RouterConfig) (*Router, error) {
 	authHandler := handler.NewAuthHandler(*config.AuthService, config.Logger)
 	adminHandler := handler.NewAdminHandler(*config.AuthService, config.Logger)
 	healthHandler := handler.NewHealthHandler(config.Logger)
+	sessionHandler := handler.NewSessionHandler(config.SessionService, config.AuthService, config.Logger)
 
 	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService)
@@ -53,6 +55,7 @@ func NewRouter(config *RouterConfig) (*Router, error) {
 		authHandler:    authHandler,
 		adminHandler:   adminHandler,
 		healthHandler:  healthHandler,
+		sessionHandler: sessionHandler,
 		authMiddleware: authMiddleware,
 		mainProxy:      mainProxy,
 		logger:         config.Logger,
@@ -104,6 +107,23 @@ func (r *Router) Setup() *gin.Engine {
 			user.DELETE("/account", r.authHandler.DeleteAccount)
 		}
 
+		sessions := v1.Group("/sessions")
+		{
+			sessions.POST("", r.sessionHandler.CreateSession)
+
+			authenticatedSessions := sessions.Group("")
+			authenticatedSessions.Use(r.authMiddleware.RequireAuth())
+			authenticatedSessions.Use(r.authMiddleware.RequireStatus(model.StatusActive))
+			{
+				authenticatedSessions.GET("", r.sessionHandler.ListMySessions)
+				authenticatedSessions.GET("/stats", r.sessionHandler.GetMySessionStats)
+				authenticatedSessions.POST("/revoke-all", r.sessionHandler.RevokeAllMySessions)
+				authenticatedSessions.DELETE("/:session_id", r.sessionHandler.RevokeSession)
+				authenticatedSessions.POST("/:session_id/extend", r.sessionHandler.ExtendSession)
+			}
+
+		}
+
 		// Admin routes (admin only)
 		admin := v1.Group("/admin")
 		admin.Use(r.authMiddleware.RequireAuth())
@@ -118,6 +138,14 @@ func (r *Router) Setup() *gin.Engine {
 				users.POST("/:uid/suspend", r.adminHandler.SuspendUser)
 				users.POST("/:uid/make-admin", r.adminHandler.MakeAdmin)
 				users.POST("/:uid/change-password", r.adminHandler.ChangePasswordForUser)
+
+				users.GET("/:uid/sessions", r.sessionHandler.ListUserSessions)
+				users.DELETE("/:uid/sessions", r.sessionHandler.RevokeAllUserSessions)
+			}
+
+			adminSessions := admin.Group("/sessions")
+			{
+				adminSessions.DELETE("/:session_id", r.sessionHandler.RevokeUserSession)
 			}
 		}
 
@@ -137,12 +165,21 @@ func (r *Router) Setup() *gin.Engine {
 			"PUT /api/v1/auth/password",
 			"GET /api/v1/user/profile",
 			"DELETE /api/v1/user/account",
+			"POST /api/v1/sessions",
+			"GET /api/v1/sessions",
+			"GET /api/v1/sessions/stats",
+			"POST /api/v1/sessions/revoke-all",
+			"DELETE /api/v1/sessions/:session_id",
+			"POST /api/v1/sessions/:session_id/extend",
 			"GET /api/v1/admin/users",
 			"GET /api/v1/admin/users/:uid",
 			"POST /api/v1/admin/users/:uid/approve",
 			"POST /api/v1/admin/users/:uid/suspend",
 			"POST /api/v1/admin/users/:uid/make-admin",
 			"POST /api/v1/admin/users/:uid/change-password",
+			"GET /api/v1/admin/users/:uid/sessions",
+			"DELETE /api/v1/admin/users/:uid/sessions",
+			"DELETE /api/v1/admin/sessions/:session_id",
 			"ANY /api/v1/proxy/*proxyPath",
 			"GET /api/v1/health",
 			"GET /api/v1/health/ready",
