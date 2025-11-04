@@ -33,11 +33,11 @@ func NewSessionHandler(sessionService *service.SessionService, authService *serv
 // @Tags Session
 // @Accept json
 // @Produce json
-// @Param payload body dto.CreateSessionRequest true "Authentication token"
-// @Success 201 {object} dto.CreateSessionResponse "Session created successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 401 {object} dto.ErrorResponse "Invalid token"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Param payload body request.CreateSessionRequest true "Authentication token"
+// @Success 201 {object} response.CreateSessionResponse "Session created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 401 {object} response.ErrorResponse "Invalid token"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions [post]
 func (h *SessionHandler) CreateSession(c *gin.Context) {
 	var req dtoRequest.CreateSessionRequest
@@ -83,9 +83,9 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} dto.SessionListResponse "Sessions retrieved successfully"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.SessionListResponse "Sessions retrieved successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions [get]
 func (h *SessionHandler) ListMySessions(c *gin.Context) {
 	userID, exists := c.Get("uid")
@@ -129,9 +129,9 @@ func (h *SessionHandler) ListMySessions(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} dto.SessionStatsResponse "Session statistics retrieved successfully"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.SessionStatsResponse "Session statistics retrieved successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/stats [get]
 func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 	userID, exists := c.Get("uid")
@@ -187,11 +187,11 @@ func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param session_id path string true "Session ID"
-// @Success 200 {object} dto.ExtendSessionResponse "Session extended successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid session ID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 404 {object} dto.ErrorResponse "Session not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.ExtendSessionResponse "Session extended successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid session ID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "Session not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/{session_id}/extend [post]
 func (h *SessionHandler) ExtendSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
@@ -244,11 +244,11 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param session_id path string true "Session ID"
-// @Success 200 {object} dto.RevokeSessionResponse "Session revoked successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid session ID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 404 {object} dto.ErrorResponse "Session not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.RevokeSessionResponse "Session revoked successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid session ID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "Session not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/{session_id} [delete]
 func (h *SessionHandler) RevokeSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
@@ -295,9 +295,9 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} dto.RevokeAllSessionsResponse "All sessions revoked successfully"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.RevokeAllSessionsResponse "All sessions revoked successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/revoke-all [post]
 func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 	userID, exists := c.Get("uid")
@@ -333,11 +333,11 @@ func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.SessionListResponse "Sessions retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.SessionListResponse "Sessions retrieved successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/sessions [get]
 func (h *SessionHandler) ListUserSessions(c *gin.Context) {
 	uid := c.Param("uid")
@@ -382,12 +382,12 @@ func (h *SessionHandler) ListUserSessions(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param session_id path string true "Session ID"
-// @Success 200 {object} dto.RevokeSessionResponse "Session revoked successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid session ID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "Session not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.RevokeSessionResponse "Session revoked successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid session ID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "Session not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/sessions/{session_id} [delete]
 func (h *SessionHandler) RevokeUserSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
@@ -417,11 +417,11 @@ func (h *SessionHandler) RevokeUserSession(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.RevokeAllSessionsResponse "All user sessions revoked successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.RevokeAllSessionsResponse "All user sessions revoked successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/sessions [delete]
 func (h *SessionHandler) RevokeAllUserSessions(c *gin.Context) {
 	uid := c.Param("uid")

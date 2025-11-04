@@ -38,11 +38,11 @@ func NewAdminHandler(authService service.AuthService, logger *slog.Logger) *Admi
 // @Param status query string false "Filter by status" Enums(pending, active, suspended)
 // @Param role query string false "Filter by role" Enums(user, admin)
 // @Param search query string false "Search in email and display name"
-// @Success 200 {object} dto.UserListResponse "Users retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.UserListResponse "Users retrieved successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	var req dtoRequest.ListUsersRequest
@@ -106,12 +106,12 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.UserDetailResponse "User retrieved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "User not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.UserDetailResponse "User retrieved successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid} [get]
 func (h *AdminHandler) GetUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -141,12 +141,12 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.UserActionResponse "User approved successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "User not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.UserActionResponse "User approved successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/approve [post]
 func (h *AdminHandler) ApproveUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -179,13 +179,13 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Param payload body dto.ChangeUserPasswordRequest true "New password"
+// @Param payload body request.ChangeUserPasswordRequest true "New password"
 // @Success 204 "Password changed successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "User not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/change-password [post]
 func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -217,12 +217,12 @@ func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.UserActionResponse "User suspended successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "User not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.UserActionResponse "User suspended successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/suspend [post]
 func (h *AdminHandler) SuspendUser(c *gin.Context) {
 	uid := c.Param("uid")
@@ -256,12 +256,12 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param uid path string true "User UID"
-// @Success 200 {object} dto.UserActionResponse "User granted admin role successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid UID"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 403 {object} dto.ErrorResponse "Forbidden"
-// @Failure 404 {object} dto.ErrorResponse "User not found"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.UserActionResponse "User granted admin role successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /admin/users/{uid}/make-admin [post]
 func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 	uid := c.Param("uid")

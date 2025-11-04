@@ -30,11 +30,11 @@ func NewAuthHandler(authService service.AuthService, logger *slog.Logger) *AuthH
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param payload body dto.RegisterRequest true "Registration details"
-// @Success 201 {object} dto.RegisterResponse "User registered successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 409 {object} dto.ErrorResponse "Email already exists"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Param payload body request.RegisterRequest true "Registration details"
+// @Success 201 {object} response.RegisterResponse "User registered successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 409 {object} response.ErrorResponse "Email already exists"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req dtoRequest.RegisterRequest
@@ -67,10 +67,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param payload body dto.VerifyTokenRequest true "Token to verify"
-// @Success 200 {object} dto.VerifyTokenResponse "Token is valid"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 401 {object} dto.ErrorResponse "Invalid or expired token"
+// @Param payload body request.VerifyTokenRequest true "Token to verify"
+// @Success 200 {object} response.VerifyTokenResponse "Token is valid"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 401 {object} response.ErrorResponse "Invalid or expired token"
 // @Router /auth/verify [post]
 func (h *AuthHandler) VerifyToken(c *gin.Context) {
 	var req dtoRequest.VerifyTokenRequest
@@ -100,11 +100,11 @@ func (h *AuthHandler) VerifyToken(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param payload body dto.ChangePasswordRequest true "New password"
+// @Param payload body request.ChangePasswordRequest true "New password"
 // @Success 204 "Password changed successfully"
-// @Failure 400 {object} dto.ErrorResponse "Invalid request"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Failure 400 {object} response.ErrorResponse "Invalid request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /auth/password [put]
 func (h *AuthHandler) ChangePasswordSelf(c *gin.Context) {
 	var req dtoRequest.ChangePasswordRequest
@@ -135,7 +135,7 @@ func (h *AuthHandler) ChangePasswordSelf(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 204 {object} response.NoContent "Account deleted successfully"
+// @Success 204 "Account deleted successfully"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 500 {object} response.ErrorResponse "Account deletion failed"
 // @Router /user/account [delete]
@@ -164,9 +164,9 @@ func (h *AuthHandler) DeleteAccount(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} dto.ProfileResponse "Profile retrieved successfully"
-// @Failure 401 {object} dto.ErrorResponse "Unauthorized"
-// @Failure 500 {object} dto.ErrorResponse "Internal server error"
+// @Success 200 {object} response.ProfileResponse "Profile retrieved successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /user/profile [get]
 func (h *AuthHandler) GetProfile(c *gin.Context) {
 	userID, exist := c.Get("user_id")
@@ -193,10 +193,10 @@ func mapToUserResponse(user *model.User) dtoResponse.UserResponse {
 		UID:           user.UID,
 		Email:         user.Email,
 		DisplayName:   user.DisplayName,
-		Status:        user.Status,
-		Role:          user.Role,
+		Status:        string(user.Status),
+		Role:          string(user.Role),
 		AdminApproved: user.AdminApproved,
-		ApprovalDate:  user.ApprovalDate,
+		ApprovalDate:  &user.ApprovalDate,
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 	}

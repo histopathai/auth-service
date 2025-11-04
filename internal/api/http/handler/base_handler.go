@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	response "github.com/histopathai/auth-service/internal/api/http/dto/reponse"
+	response "github.com/histopathai/auth-service/internal/api/http/dto/response"
 	"github.com/histopathai/auth-service/internal/shared/errors"
 )
 
