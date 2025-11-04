@@ -62,5 +62,5 @@ firestore.indexes.json
 field.html
 
 # Ignore generated Go doc file
-docs/docs.go
+docs/**
 .firebaserc
