@@ -9,6 +9,9 @@ import (
 	"github.com/histopathai/auth-service/internal/api/http/proxy"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type Router struct {
@@ -71,6 +74,8 @@ func (r *Router) Setup() *gin.Engine {
 	// Rate limiter
 	rateLimiter := middleware.NewRateLimiter(100, 200)
 	r.engine.Use(rateLimiter.RateLimit())
+
+	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")
