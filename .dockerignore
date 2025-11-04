@@ -4,10 +4,8 @@
 .env
 .env.*
 *.html
-*.json # swagger.json, firestore.indexes.json, firebase.json dışındakileri dahil etmeyin, projenize göre ayarlayın
-*.rules # firestore.rules gibi dosyaları hariç tutabilir
+*.rules
 bin/
-docs/
 field.html
 firebase.json
 firestore.indexes.json
