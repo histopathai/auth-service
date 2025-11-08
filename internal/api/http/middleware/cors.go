@@ -8,7 +8,7 @@ import (
 // CORSMiddleware returns a CORS middleware with default configuration
 func CORSMiddleware() gin.HandlerFunc {
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"} // Configure this based on your needs
+	config.AllowOrigins = []string{"http://localhost:5173"} // Configure this based on your needs
 	config.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	config.AllowCredentials = true
