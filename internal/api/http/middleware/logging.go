@@ -24,8 +24,8 @@ func LoggingMiddleware() gin.HandlerFunc {
 
 		// Get user info if available
 		var userID string
-		if uid, exists := c.Get("uid"); exists {
-			userID = uid.(string)
+		if user_id, exists := c.Get("user_id"); exists {
+			userID = user_id.(string)
 		}
 
 		slog.Info("HTTP Request",

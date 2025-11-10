@@ -23,7 +23,7 @@ func NewFirestoreUserRepository(client *firestore.Client, collection string) *Fi
 
 func (fur *FirestoreUserRepositoryImpl) Create(ctx context.Context, entity *model.User) error {
 	data := UserToFirestoreMap(entity)
-	_, err := fur.client.Collection(fur.collection).Doc(entity.UID).Set(ctx, data)
+	_, err := fur.client.Collection(fur.collection).Doc(entity.UserID).Set(ctx, data)
 	if err != nil {
 		return MapFirestoreError(err)
 	}
@@ -31,8 +31,8 @@ func (fur *FirestoreUserRepositoryImpl) Create(ctx context.Context, entity *mode
 	return nil
 }
 
-func (fur *FirestoreUserRepositoryImpl) GetByUID(ctx context.Context, uid string) (*model.User, error) {
-	doc, err := fur.client.Collection(fur.collection).Doc(uid).Get(ctx)
+func (fur *FirestoreUserRepositoryImpl) GetByUserID(ctx context.Context, userID string) (*model.User, error) {
+	doc, err := fur.client.Collection(fur.collection).Doc(userID).Get(ctx)
 	if err != nil {
 		return nil, MapFirestoreError(err)
 	}
@@ -45,18 +45,18 @@ func (fur *FirestoreUserRepositoryImpl) GetByUID(ctx context.Context, uid string
 	return user, nil
 }
 
-func (fur *FirestoreUserRepositoryImpl) Update(ctx context.Context, uid string, updates *model.UpdateUser) error {
+func (fur *FirestoreUserRepositoryImpl) Update(ctx context.Context, userID string, updates *model.UpdateUser) error {
 	updateData := UpdateUserToFirestoreUpdates(updates)
 
-	_, err := fur.client.Collection(fur.collection).Doc(uid).Update(ctx, updateData)
+	_, err := fur.client.Collection(fur.collection).Doc(userID).Update(ctx, updateData)
 	if err != nil {
 		return MapFirestoreError(err)
 	}
 	return nil
 }
 
-func (fur *FirestoreUserRepositoryImpl) Delete(ctx context.Context, uid string) error {
-	_, err := fur.client.Collection(fur.collection).Doc(uid).Delete(ctx)
+func (fur *FirestoreUserRepositoryImpl) Delete(ctx context.Context, userID string) error {
+	_, err := fur.client.Collection(fur.collection).Doc(userID).Delete(ctx)
 	if err != nil {
 		return MapFirestoreError(err)
 	}

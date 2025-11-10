@@ -9,15 +9,15 @@ import (
 
 func UserToFirestoreMap(user *model.User) map[string]interface{} {
 	return map[string]interface{}{
-		"UID":           user.UID,
-		"Email":         user.Email,
-		"DisplayName":   user.DisplayName,
-		"CreatedAt":     user.CreatedAt,
-		"UpdatedAt":     user.UpdatedAt,
-		"Status":        string(user.Status),
-		"Role":          string(user.Role),
-		"AdminApproved": user.AdminApproved,
-		"ApprovalDate":  user.ApprovalDate,
+		"user_id":        user.UserID,
+		"email":          user.Email,
+		"display_name":   user.DisplayName,
+		"created_at":     user.CreatedAt,
+		"updated_at":     user.UpdatedAt,
+		"status":         string(user.Status),
+		"role":           string(user.Role),
+		"admin_approved": user.AdminApproved,
+		"approval_date":  user.ApprovalDate,
 	}
 }
 
@@ -35,22 +35,22 @@ func UpdateUserToFirestoreUpdates(update *model.UpdateUser) []firestore.Update {
 	updates := make([]firestore.Update, 0)
 
 	if update.DisplayName != nil {
-		updates = append(updates, firestore.Update{Path: "DisplayName", Value: *update.DisplayName})
+		updates = append(updates, firestore.Update{Path: "display_name", Value: *update.DisplayName})
 	}
 	if update.Status != nil {
-		updates = append(updates, firestore.Update{Path: "Status", Value: string(*update.Status)})
+		updates = append(updates, firestore.Update{Path: "status", Value: string(*update.Status)})
 	}
 	if update.Role != nil {
-		updates = append(updates, firestore.Update{Path: "Role", Value: string(*update.Role)})
+		updates = append(updates, firestore.Update{Path: "role", Value: string(*update.Role)})
 	}
 	if update.AdminApproved != nil {
-		updates = append(updates, firestore.Update{Path: "AdminApproved", Value: *update.AdminApproved})
+		updates = append(updates, firestore.Update{Path: "admin_approved", Value: *update.AdminApproved})
 	}
 	if update.ApprovalDate != nil {
-		updates = append(updates, firestore.Update{Path: "ApprovalDate", Value: *update.ApprovalDate})
+		updates = append(updates, firestore.Update{Path: "approval_date", Value: *update.ApprovalDate})
 	}
 
-	updates = append(updates, firestore.Update{Path: "UpdatedAt", Value: time.Now()})
+	updates = append(updates, firestore.Update{Path: "updated_at", Value: time.Now()})
 
 	return updates
 }

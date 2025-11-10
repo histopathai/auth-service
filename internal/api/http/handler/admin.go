@@ -99,28 +99,28 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 }
 
 // GetUser
-// @Summary Get User by UID
-// @Description Get detailed user information by UID (Admin only)
+// @Summary Get User by ID
+// @Description Get detailed user information by ID (Admin only)
 // @Tags Admin
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.UserDetailResponse "User retrieved successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid} [get]
+// @Router /admin/users/{user_id} [get]
 func (h *AdminHandler) GetUser(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
-	user, err := h.authService.GetUserByUID(c.Request.Context(), uid)
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -140,28 +140,28 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.UserActionResponse "User approved successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/approve [post]
+// @Router /admin/users/{user_id}/approve [post]
 func (h *AdminHandler) ApproveUser(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
-	err := h.authService.ApproveUser(c.Request.Context(), uid)
+	err := h.authService.ApproveUser(c.Request.Context(), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
 	}
 
-	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User approved successfully",
@@ -178,7 +178,7 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Param payload body request.ChangeUserPasswordRequest true "New password"
 // @Success 204 "Password changed successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid request"
@@ -186,11 +186,11 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/change-password [post]
+// @Router /admin/users/{user_id}/change-password [post]
 func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
@@ -200,7 +200,7 @@ func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.ChangeUserPassword(c.Request.Context(), uid, req.NewPassword)
+	err := h.authService.ChangeUserPassword(c.Request.Context(), userID, req.NewPassword)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -216,29 +216,29 @@ func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.UserActionResponse "User suspended successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/suspend [post]
+// @Router /admin/users/{user_id}/suspend [post]
 func (h *AdminHandler) SuspendUser(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
-	err := h.authService.SuspendUser(c.Request.Context(), uid)
+	err := h.authService.SuspendUser(c.Request.Context(), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
 	}
 
 	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User suspended successfully",
@@ -255,29 +255,29 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.UserActionResponse "User granted admin role successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/make-admin [post]
+// @Router /admin/users/{user_id}/make-admin [post]
 func (h *AdminHandler) MakeAdmin(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
-	err := h.authService.PromoteUserToAdmin(c.Request.Context(), uid)
+	err := h.authService.PromoteUserToAdmin(c.Request.Context(), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
 	}
 
 	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUID(c.Request.Context(), uid)
+	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User granted admin role successfully",

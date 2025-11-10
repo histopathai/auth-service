@@ -7,7 +7,7 @@ type RegisterUser struct {
 }
 
 type UserAuthInfo struct {
-	UID           string
+	UserID        string
 	Email         string
 	EmailVerified bool
 	DisplayName   string

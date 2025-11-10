@@ -141,14 +141,13 @@ func (r *Router) Setup() *gin.Engine {
 			users := admin.Group("/users")
 			{
 				users.GET("", r.adminHandler.ListUsers)
-				users.GET("/:uid", r.adminHandler.GetUser)
-				users.POST("/:uid/approve", r.adminHandler.ApproveUser)
-				users.POST("/:uid/suspend", r.adminHandler.SuspendUser)
-				users.POST("/:uid/make-admin", r.adminHandler.MakeAdmin)
-				users.POST("/:uid/change-password", r.adminHandler.ChangePasswordForUser)
-
-				users.GET("/:uid/sessions", r.sessionHandler.ListUserSessions)
-				users.DELETE("/:uid/sessions", r.sessionHandler.RevokeAllUserSessions)
+				users.GET("/:user_id", r.adminHandler.GetUser)
+				users.POST("/:user_id/approve", r.adminHandler.ApproveUser)
+				users.POST("/:user_id/suspend", r.adminHandler.SuspendUser)
+				users.POST("/:user_id/make-admin", r.adminHandler.MakeAdmin)
+				users.POST("/:user_id/change-password", r.adminHandler.ChangePasswordForUser)
+				users.GET("/:user_id/sessions", r.sessionHandler.ListUserSessions)
+				users.DELETE("/:user_id/sessions", r.sessionHandler.RevokeAllUserSessions)
 			}
 
 			adminSessions := admin.Group("/sessions")
@@ -180,13 +179,13 @@ func (r *Router) Setup() *gin.Engine {
 			"DELETE /api/v1/sessions/:session_id",
 			"POST /api/v1/sessions/:session_id/extend",
 			"GET /api/v1/admin/users",
-			"GET /api/v1/admin/users/:uid",
-			"POST /api/v1/admin/users/:uid/approve",
-			"POST /api/v1/admin/users/:uid/suspend",
-			"POST /api/v1/admin/users/:uid/make-admin",
-			"POST /api/v1/admin/users/:uid/change-password",
-			"GET /api/v1/admin/users/:uid/sessions",
-			"DELETE /api/v1/admin/users/:uid/sessions",
+			"GET /api/v1/admin/users/:user_id",
+			"POST /api/v1/admin/users/:user_id/approve",
+			"POST /api/v1/admin/users/:user_id/suspend",
+			"POST /api/v1/admin/users/:user_id/make-admin",
+			"POST /api/v1/admin/users/:user_id/change-password",
+			"GET /api/v1/admin/users/:user_id/sessions",
+			"DELETE /api/v1/admin/users/:user_id/sessions",
 			"DELETE /api/v1/admin/sessions/:session_id",
 			"ANY /api/v1/proxy/*proxyPath",
 			"GET /api/v1/health",

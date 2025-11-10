@@ -53,7 +53,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		return
 	}
 	// Create session
-	sessionID, err := h.sessionService.CreateSession(c.Request.Context(), user.UID)
+	sessionID, err := h.sessionService.CreateSession(c.Request.Context(), user.UserID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -88,7 +88,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions [get]
 func (h *SessionHandler) ListMySessions(c *gin.Context) {
-	userID, exists := c.Get("uid")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		h.handleError(c, errors.NewUnauthorizedError("User not authenticated"))
 		return
@@ -134,7 +134,7 @@ func (h *SessionHandler) ListMySessions(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/stats [get]
 func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
-	userID, exists := c.Get("uid")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		h.handleError(c, errors.NewUnauthorizedError("User not authenticated"))
 		return
@@ -200,7 +200,7 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("uid")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		h.handleError(c, errors.NewUnauthorizedError("User not authenticated"))
 		return
@@ -257,7 +257,7 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("uid")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		h.handleError(c, errors.NewUnauthorizedError("User not authenticated"))
 		return
@@ -300,7 +300,7 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/revoke-all [post]
 func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
-	userID, exists := c.Get("uid")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		h.handleError(c, errors.NewUnauthorizedError("User not authenticated"))
 		return
@@ -332,21 +332,21 @@ func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.SessionListResponse "Sessions retrieved successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/sessions [get]
+// @Router /admin/users/{user_id}/sessions [get]
 func (h *SessionHandler) ListUserSessions(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
-	sessions, err := h.sessionService.GetUserSessionStats(c.Request.Context(), uid)
+	sessions, err := h.sessionService.GetUserSessionStats(c.Request.Context(), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -416,25 +416,25 @@ func (h *SessionHandler) RevokeUserSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param uid path string true "User UID"
+// @Param user_id path string true "User UserID"
 // @Success 200 {object} response.RevokeAllSessionsResponse "All user sessions revoked successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{uid}/sessions [delete]
+// @Router /admin/users/{user_id}/sessions [delete]
 func (h *SessionHandler) RevokeAllUserSessions(c *gin.Context) {
-	uid := c.Param("uid")
-	if uid == "" {
-		h.handleError(c, errors.NewValidationError("Missing UID", nil))
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
 		return
 	}
 
 	// Get session count before revoking
-	count, _ := h.sessionService.GetActiveSessionCount(c.Request.Context(), uid)
+	count, _ := h.sessionService.GetActiveSessionCount(c.Request.Context(), userID)
 
 	// Revoke all user sessions
-	if err := h.sessionService.RevokeAllUserSessions(c.Request.Context(), uid); err != nil {
+	if err := h.sessionService.RevokeAllUserSessions(c.Request.Context(), userID); err != nil {
 		h.handleError(c, err)
 		return
 	}

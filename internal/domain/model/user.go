@@ -28,7 +28,7 @@ type UpdateUser struct {
 }
 
 type User struct {
-	UID           string
+	UserID        string
 	Email         string
 	DisplayName   string
 	CreatedAt     time.Time
@@ -40,11 +40,11 @@ type User struct {
 }
 
 func (u *User) GetID() string {
-	return u.UID
+	return u.UserID
 }
 
 func (u *User) SetID(id string) {
-	u.UID = id
+	u.UserID = id
 }
 
 func (u *User) SetCreatedAt(t time.Time) {

@@ -175,7 +175,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.GetUserByUID(c.Request.Context(), userID.(string))
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID.(string))
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -190,7 +190,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 
 func mapToUserResponse(user *model.User) dtoResponse.UserResponse {
 	return dtoResponse.UserResponse{
-		UID:           user.UID,
+		UserID:        user.UserID,
 		Email:         user.Email,
 		DisplayName:   user.DisplayName,
 		Status:        string(user.Status),

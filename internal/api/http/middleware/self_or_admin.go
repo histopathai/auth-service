@@ -28,11 +28,11 @@ func SelfOrAdminOnly() gin.HandlerFunc {
 			return
 		}
 
-		// get the UID from the URL parameter
-		targetUID := c.Param("uid")
+		// get the UserID from the URL parameter
+		targetUserID := c.Param("user_id")
 
 		//Allow if user is admin or accesing their own resource
-		if u.Role == model.RoleAdmin || u.UID == targetUID {
+		if u.Role == model.RoleAdmin || u.UserID == targetUserID {
 			c.Next()
 			return
 		}

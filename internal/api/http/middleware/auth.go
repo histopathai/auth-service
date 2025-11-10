@@ -58,7 +58,7 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 
 		// Store user information in context
 		c.Set("user", user)
-		c.Set("uid", user.UID)
+		c.Set("userID", user.UserID)
 		c.Next()
 	}
 }
@@ -169,7 +169,7 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 		user, err := m.authService.VerifyToken(c.Request.Context(), token)
 		if err != nil {
 			c.Set("user", user)
-			c.Set("uid", user.UID)
+			c.Set("user_id", user.UserID)
 		}
 
 		c.Next()

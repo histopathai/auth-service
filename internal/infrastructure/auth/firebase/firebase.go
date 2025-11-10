@@ -31,7 +31,7 @@ func (far *FirebaseAuthRepositoryImpl) Register(ctx context.Context, payload *mo
 	}
 
 	UserAuthInfo := &model.UserAuthInfo{
-		UID:           u.UID,
+		UserID:        u.UID,
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		DisplayName:   u.DisplayName,
@@ -47,7 +47,7 @@ func (far *FirebaseAuthRepositoryImpl) VerifyIDToken(ctx context.Context, idToke
 	}
 
 	authUser := &model.UserAuthInfo{
-		UID:           token.UID,
+		UserID:        token.UID,
 		Email:         token.Claims["email"].(string),
 		EmailVerified: token.Claims["email_verified"].(bool),
 		DisplayName:   token.Claims["name"].(string),
@@ -56,9 +56,9 @@ func (far *FirebaseAuthRepositoryImpl) VerifyIDToken(ctx context.Context, idToke
 	return authUser, nil
 }
 
-func (far *FirebaseAuthRepositoryImpl) ChangePassword(ctx context.Context, uid string, newPassword string) error {
+func (far *FirebaseAuthRepositoryImpl) ChangePassword(ctx context.Context, userID string, newPassword string) error {
 
-	_, err := far.client.UpdateUser(ctx, uid, (&auth.UserToUpdate{}).Password(newPassword))
+	_, err := far.client.UpdateUser(ctx, userID, (&auth.UserToUpdate{}).Password(newPassword))
 	if err != nil {
 		return MapFirebaseAuthError(err)
 	}
@@ -66,9 +66,9 @@ func (far *FirebaseAuthRepositoryImpl) ChangePassword(ctx context.Context, uid s
 	return nil
 }
 
-func (far *FirebaseAuthRepositoryImpl) Delete(ctx context.Context, uid string) error {
+func (far *FirebaseAuthRepositoryImpl) Delete(ctx context.Context, userID string) error {
 
-	err := far.client.DeleteUser(ctx, uid)
+	err := far.client.DeleteUser(ctx, userID)
 	if err != nil {
 		return MapFirebaseAuthError(err)
 	}
@@ -77,14 +77,14 @@ func (far *FirebaseAuthRepositoryImpl) Delete(ctx context.Context, uid string) e
 
 }
 
-func (far *FirebaseAuthRepositoryImpl) GetAuthInfo(ctx context.Context, uid string) (*model.UserAuthInfo, error) {
-	u, err := far.client.GetUser(ctx, uid)
+func (far *FirebaseAuthRepositoryImpl) GetAuthInfo(ctx context.Context, userID string) (*model.UserAuthInfo, error) {
+	u, err := far.client.GetUser(ctx, userID)
 	if err != nil {
 		return nil, MapFirebaseAuthError(err)
 	}
 
 	authUser := &model.UserAuthInfo{
-		UID:           u.UID,
+		UserID:        u.UID,
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		DisplayName:   u.DisplayName,

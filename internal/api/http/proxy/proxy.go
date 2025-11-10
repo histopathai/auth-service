@@ -205,7 +205,7 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 		// Check user status
 		if user.Status != model.StatusActive {
 			msp.logger.Warn("Inactive user attempted to access proxy",
-				"user_id", user.UID,
+				"user_id", user.UserID,
 				"status", user.Status,
 			)
 			c.JSON(http.StatusForbidden, gin.H{
@@ -216,7 +216,7 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 		}
 
 		// Add user info to context
-		ctx := context.WithValue(c.Request.Context(), "user_id", user.UID)
+		ctx := context.WithValue(c.Request.Context(), "user_id", user.UserID)
 		ctx = context.WithValue(ctx, "user_role", string(user.Role))
 		c.Request = c.Request.WithContext(ctx)
 
@@ -227,7 +227,7 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 				msp.logger.Warn("Slow proxy request",
 					"duration", duration,
 					"path", c.Request.URL.Path,
-					"user_id", user.UID,
+					"user_id", user.UserID,
 				)
 			}
 		}()
@@ -235,7 +235,7 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 		msp.logger.Info("Proxying authenticated request",
 			"method", c.Request.Method,
 			"path", c.Request.URL.Path,
-			"user_id", user.UID,
+			"user_id", user.UserID,
 			"role", user.Role,
 		)
 
@@ -254,10 +254,10 @@ func (msp *MainServiceProxy) authenticateRequest(c *gin.Context) (*model.User, e
 		session, err := msp.sessionService.ValidateAndExtend(c.Request.Context(), sessionID)
 		if err == nil && session != nil {
 			// Get user from session
-			user, err := msp.authService.GetUserByUID(c.Request.Context(), session.UserID)
+			user, err := msp.authService.GetUserByUserID(c.Request.Context(), session.UserID)
 			if err == nil {
 				msp.logger.Debug("Session authentication successful",
-					"user_id", user.UID,
+					"user_id", user.UserID,
 				)
 				return user, nil
 			}
@@ -281,7 +281,7 @@ func (msp *MainServiceProxy) authenticateRequest(c *gin.Context) (*model.User, e
 			user, err := msp.authService.VerifyToken(c.Request.Context(), bearerToken)
 			if err == nil && user != nil {
 				msp.logger.Debug("Bearer token authentication successful",
-					"user_id", user.UID,
+					"user_id", user.UserID,
 				)
 				return user, nil
 			}

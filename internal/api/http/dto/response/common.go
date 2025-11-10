@@ -29,7 +29,7 @@ type ListResponse struct {
 
 // UserResponse represents user data in responses
 type UserResponse struct {
-	UID           string     `json:"uid" example:"123e4567-e89b-12d3-a456-426614174000"`
+	UserID        string     `json:"user_id" example:"123e4567-e89b-12d3-a456-426614174000"`
 	Email         string     `json:"email" example:"user@example.com"`
 	DisplayName   string     `json:"display_name" example:"John Doe"`
 	Status        string     `json:"status" example:"active"`

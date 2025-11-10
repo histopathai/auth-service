@@ -1,7 +1,7 @@
 package constants
 
 const (
-	FieldUserUID           = "UID"
+	FieldUserUID           = "UserID"
 	FieldUserEmail         = "Email"
 	FieldUserDisplayName   = "DisplayName"
 	FieldUserCreatedAt     = "CreatedAt"

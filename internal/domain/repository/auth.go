@@ -11,9 +11,9 @@ type AuthRepository interface {
 
 	VerifyIDToken(ctx context.Context, idToken string) (*model.UserAuthInfo, error)
 
-	ChangePassword(ctx context.Context, uid, newPassword string) error
+	ChangePassword(ctx context.Context, userID string, newPassword string) error
 
-	Delete(ctx context.Context, uid string) error
+	Delete(ctx context.Context, userID string) error
 
-	GetAuthInfo(ctx context.Context, uid string) (*model.UserAuthInfo, error) // <-- DOĞRU TİP
+	GetAuthInfo(ctx context.Context, userID string) (*model.UserAuthInfo, error) // <-- DOĞRU TİP
 }
