@@ -24,3 +24,8 @@ data "terraform_remote_state" "platform" {
   }
 }
 
+locals {
+    project_id = data.terraform_remote_state.platform.outputs.project_id
+    region     = data.terraform_remote_state.platform.outputs.region
+    service_account = data.terraform_remote_state.platform.outputs.auth_service_account_email
+}
