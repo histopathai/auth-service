@@ -1,0 +1,32 @@
+# -----------------------------
+# Project Configuration
+# -----------------------------
+
+project_id      = "histopathai"
+project_number  = "12314325342534"
+region          = "europe-west1"
+environment     = "prod"
+
+
+# ------------------------------
+# Scaling Configuration
+# ------------------------------
+min_instances = 1
+max_instances = 2
+
+# ------------------------------
+# Resource Configuration
+# ------------------------------
+cpu_limit       = "1"
+memory_limit    = "512Mi"
+
+# ------------------------------
+# Access Configuration
+# ------------------------------
+allow_public_access = true
+
+# ------------------------------
+# Logging Configuration
+# ------------------------------
+log_level = "info"
+ 

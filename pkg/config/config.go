@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"strconv"
 )
@@ -34,7 +33,7 @@ func LoadConfig() (*Config, error) {
 	config := &Config{
 		ProjectID:      os.Getenv("PROJECT_ID"),
 		Region:         os.Getenv("REGION"),
-		MainServiceURL: os.Getenv("MAIN_SERVICE_URL"),
+		MainServiceURL: os.Getenv("MAIN_SERVICE_URL"), // ← Terraform'dan gelir
 		Server: ServerConfig{
 			Port:         getEnvOrDefault("PORT", "8080"),
 			ReadTimeout:  getEnvAsInt("READ_TIMEOUT", 15),
@@ -42,26 +41,24 @@ func LoadConfig() (*Config, error) {
 			IdleTimeout:  getEnvAsInt("IDLE_TIMEOUT", 60),
 			GINMode:      getEnvOrDefault("GIN_MODE", "debug"),
 		},
-		// EKLENDİ: Logging yapılandırması
 		Logging: LoggingConfig{
-			Level:  getEnvOrDefault("LOG_LEVEL", "info"),  // Örn: debug, info, warn, error
-			Format: getEnvOrDefault("LOG_FORMAT", "json"), // "json" veya "text"
+			Level:  getEnvOrDefault("LOG_LEVEL", "info"),
+			Format: getEnvOrDefault("LOG_FORMAT", "json"),
 		},
 	}
 
-	if env != "LOCAL" {
-		project_number := os.Getenv("PROJECT_NUMBER")
-		service_name := os.Getenv("MAIN_SERVICE_NAME")
-		region := os.Getenv("REGION")
-		if project_number == "" || service_name == "" || region == "" {
-			return nil, fmt.Errorf("PROJECT_NUMBER, MAIN_SERVICE_NAME, and REGION must be set in non-local environments")
+	// LOCAL development override
+	if env == "LOCAL" {
+		if config.MainServiceURL == "" {
+			config.MainServiceURL = "http://localhost:8081"
 		}
+	}
 
-		config.MainServiceURL = fmt.Sprintf("https://%s-%s.%s.run.app", service_name, project_number, region)
+	if env != "LOCAL" {
 		config.Server.GINMode = "release"
 	}
-	return config, nil
 
+	return config, nil
 }
 
 func getEnvOrDefault(key, defaultValue string) string {
