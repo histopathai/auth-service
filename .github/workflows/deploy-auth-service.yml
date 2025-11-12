@@ -55,6 +55,8 @@ jobs:
     needs: setup
     env:
       ENVIRONMENT: ${{ needs.setup.outputs.environment }}
+      WIF_PROVIDER: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_PROVIDER_PROD || secrets.WIF_PROVIDER_DEV }}
+      WIF_SERVICE_ACCOUNT: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_SERVICE_ACCOUNT_PROD || secrets.WIF_SERVICE_ACCOUNT_DEV }}
     
     steps:
       - name: Checkout repository
