@@ -241,6 +241,7 @@ jobs:
           echo "📊 Running Terraform plan..."
           terraform plan \
             -var="image_tag=${{ needs.build-and-push.outputs.image }}" \
+            -var="environment=${{ needs.setup.outputs.environment }}" \
             -out=tfplan
 
       - name: Terraform Apply
