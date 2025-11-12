@@ -20,7 +20,7 @@ data "terraform_remote_state" "platform" {
   
   config = {
     bucket = "tf-state-histopathai-platform"
-    prefix = "platform-infra"
+    prefix = "platform/prod"
   }
 }
 
