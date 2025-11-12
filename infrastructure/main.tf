@@ -32,6 +32,9 @@ locals {
     artifact_repository_id = data.terraform_remote_state.platform.outputs.artifact_repository_id
     image_name = "${local.region}-docker.pkg.dev/${local.project_id}/histopath-docker-repo/auth-service:latest"
     service_name = "auth-service-${var.environment}"
+    main_service_name = var.environment == "prod" ? "main-service" : "main-service-${var.environment}"
+    main_service_url  = "https://${local.main_service_name}-${local.project_number}.${local.region}.run.app"
+
 
 }
 
@@ -58,8 +61,7 @@ resource "google_cloud_run_v2_service" "auth_service" {
     }
 
     containers {
-        image = local.image_name
-      
+        image = var.image_tag      
         resources {
             limits = {
             cpu    = var.cpu_limit
@@ -97,6 +99,16 @@ resource "google_cloud_run_v2_service" "auth_service" {
         }
 
         env {
+            name  = "LOG_LEVEL"
+            value = var.log_levels
+        }
+
+        env {
+            name = "LOG_FORMAT"
+            value = "json"
+        }
+
+        env {
             name  = "READ_TIMEOUT"
             value = "15"
         }
@@ -109,6 +121,16 @@ resource "google_cloud_run_v2_service" "auth_service" {
         env {
             name  = "IDLE_TIMEOUT"
             value = "60"
+        }
+
+        env {
+            name  = "MAIN_SERVICE_URL"
+            value = local.main_service_url
+        }
+
+        env {
+            name  = "MAIN_SERVICE_NAME"
+            value = local.main_service_name
         }
     }
     }
@@ -124,11 +146,6 @@ resource "google_cloud_run_v2_service" "auth_service" {
         managed_by  = "terraform"
     }
 
-    lifecycle {
-        ignore_changes = [
-        template[0].containers[0].image,  
-        ]
-    }
 }
 
 # ---------------------------------
