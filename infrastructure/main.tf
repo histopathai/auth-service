@@ -30,12 +30,10 @@ locals {
     region     = data.terraform_remote_state.platform.outputs.region
     service_account = data.terraform_remote_state.platform.outputs.auth_service_account_email
     artifact_repository_id = data.terraform_remote_state.platform.outputs.artifact_repository_id
-    image_name = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/auth-service:${var.image_tag}"
     service_name = var.environment == "prod" ? "auth-service" : "auth-service-${var.environment}"
+    image_name = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/${local.service_name}:${var.image_tag}"
     main_service_name = var.environment == "prod" ? "main-service" : "main-service-${var.environment}"
     main_service_url  = "https://${local.main_service_name}-${local.project_number}.${local.region}.run.app"
-
-
 }
 
 provider "google" {
