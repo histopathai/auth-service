@@ -102,9 +102,9 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          IMAGE_TAG="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:latest"
-          IMAGE_ENV="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:${{ env.ENVIRONMENT }}"
+          IMAGE_TAG="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:latest"
+          IMAGE_ENV="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ env.ENVIRONMENT }}"
           
           docker build \
             --tag ${IMAGE_TAG} \
@@ -117,9 +117,9 @@ jobs:
 
       - name: Push Docker Image
         run: |
-          IMAGE_TAG="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:latest"
-          IMAGE_ENV="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/histopath-docker-repo/${{ env.REPO_NAME }}:${{ env.ENVIRONMENT }}"
+          IMAGE_TAG="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:latest"
+          IMAGE_ENV="${{ steps.gcp-info.outputs.region }}-docker.pkg.dev/${{ steps.gcp-info.outputs.project_id }}/${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ env.ENVIRONMENT }}"
           
           docker push ${IMAGE_TAG}
           docker push ${IMAGE_LATEST}
