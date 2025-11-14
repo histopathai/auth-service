@@ -40,7 +40,7 @@ func NewRouter(config *RouterConfig) (*Router, error) {
 	sessionHandler := handler.NewSessionHandler(config.SessionService, config.AuthService, config.Logger)
 
 	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService)
+	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService, config.SessionService)
 
 	// Initialize proxy
 	mainProxy, err := proxy.NewMainServiceProxy(
@@ -99,7 +99,7 @@ func (r *Router) Setup() *gin.Engine {
 
 			// Protected endpoints
 			authenticated := auth.Group("")
-			authenticated.Use(r.authMiddleware.RequireAuth())
+			authenticated.Use(r.authMiddleware.RequireSession())
 			authenticated.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 			{
 				authenticated.PUT("/password", r.authHandler.ChangePasswordSelf)
@@ -108,7 +108,7 @@ func (r *Router) Setup() *gin.Engine {
 
 		// User routes (protected)
 		user := v1.Group("/user")
-		user.Use(r.authMiddleware.RequireAuth())
+		user.Use(r.authMiddleware.RequireAuthOrSession())
 		user.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 		{
 			user.GET("/profile", r.authHandler.GetProfile)
@@ -120,7 +120,7 @@ func (r *Router) Setup() *gin.Engine {
 			sessions.POST("", r.sessionHandler.CreateSession)
 
 			authenticatedSessions := sessions.Group("")
-			authenticatedSessions.Use(r.authMiddleware.RequireAuth())
+			authenticatedSessions.Use(r.authMiddleware.RequireSession())
 			authenticatedSessions.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 			{
 				authenticatedSessions.GET("", r.sessionHandler.ListMySessions)
