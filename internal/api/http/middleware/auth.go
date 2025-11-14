@@ -239,7 +239,11 @@ func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
 				}
 			}
 		} else {
-			details["session_error"] = err.Error()
+			if err != nil {
+				details["session_error"] = err.Error()
+			} else {
+				details["session_error"] = "session_id cookie is empty"
+			}
 		}
 
 		// Session yoksa veya geçersizse, Bearer token'a bak
@@ -255,7 +259,11 @@ func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
 					c.Set("auth_method", "bearer") // Hangi method kullanıldığını işaretle
 					c.Next()
 					return
+				} else {
+					details["bearer_error"] = err.Error()
 				}
+			} else {
+				details["bearer_error"] = "invalid_token_format"
 			}
 		} else {
 			details["auth_error"] = "Authorization header missing or invalid"
