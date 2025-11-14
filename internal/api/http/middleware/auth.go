@@ -12,13 +12,15 @@ import (
 
 // AuthMiddleeware provides authentication middleware
 type AuthMiddleware struct {
-	authService service.AuthService
+	authService    service.AuthService
+	sessionService *service.SessionService
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware instance
-func NewAuthMiddleware(authService service.AuthService) *AuthMiddleware {
+func NewAuthMiddleware(authService service.AuthService, sessionService *service.SessionService) *AuthMiddleware {
 	return &AuthMiddleware{
-		authService: authService,
+		authService:    authService,
+		sessionService: sessionService,
 	}
 }
 
@@ -173,5 +175,90 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+func (m *AuthMiddleware) RequireSession() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Cookie'den session_id oku
+		sessionID, err := c.Cookie("session_id")
+		if err != nil || sessionID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "missing_session",
+				"message": "Session cookie is required"})
+			c.Abort()
+			return
+		}
+
+		// Session validate et
+		session, err := m.sessionService.ValidateSession(c.Request.Context(), sessionID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "invalid_session",
+				"message": "Session is invalid or expired"})
+			c.Abort()
+			return
+		}
+
+		// User bilgisini context'e ekle
+		user, err := m.authService.GetUserByUserID(c.Request.Context(), session.UserID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":   "user_not_found",
+				"message": "User not found"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user", user)
+		c.Set("user_id", user.UserID)
+		c.Set("session_id", sessionID)
+		c.Next()
+	}
+}
+
+func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Önce session cookie'ye bak
+		sessionID, err := c.Cookie("session_id")
+		if err == nil && sessionID != "" {
+			// Session varsa validate et
+			session, err := m.sessionService.ValidateSession(c.Request.Context(), sessionID)
+			if err == nil {
+				user, err := m.authService.GetUserByUserID(c.Request.Context(), session.UserID)
+				if err == nil {
+					c.Set("user", user)
+					c.Set("user_id", user.UserID)
+					c.Set("session_id", sessionID)
+					c.Set("auth_method", "session") // Hangi method kullanıldığını işaretle
+					c.Next()
+					return
+				}
+			}
+		}
+
+		// Session yoksa veya geçersizse, Bearer token'a bak
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			tokenParts := strings.Split(authHeader, " ")
+			if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
+				token := tokenParts[1]
+				user, err := m.authService.VerifyToken(c.Request.Context(), token)
+				if err == nil {
+					c.Set("user", user)
+					c.Set("user_id", user.UserID)
+					c.Set("auth_method", "bearer") // Hangi method kullanıldığını işaretle
+					c.Next()
+					return
+				}
+			}
+		}
+
+		// İkisi de yoksa veya geçersizse
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error":   "unauthorized",
+			"message": "Valid session cookie or Bearer token required",
+		})
+		c.Abort()
 	}
 }
