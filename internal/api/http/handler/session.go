@@ -79,7 +79,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 	)
 
 	c.Header("Set-Cookie", fmt.Sprintf(
-		"session_id=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
+		"session_id=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
 		sessionID, maxAge,
 	))
 
