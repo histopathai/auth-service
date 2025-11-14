@@ -250,8 +250,7 @@ jobs:
         run: |
           echo "📊 Running Terraform plan..."
           
-          # GitHub Actions çıktıyı maskelediği için imaj adını burada yeniden oluşturuyoruz.
-          # 'project_id' secret DEĞİL, bu yüzden 'needs'den güvenle alabiliriz.
+        
           IMAGE_TAG="${{ env.GCP_REGION }}-docker.pkg.dev/${{ needs.build-and-push.outputs.project_id }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ github.sha }}"
           
           echo "Plan için kullanılacak imaj adı: ${IMAGE_TAG}"
