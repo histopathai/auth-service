@@ -15,7 +15,6 @@ type SessionResponse struct {
 
 // CreateSessionResponse represents session creation response
 type CreateSessionResponse struct {
-	SessionID string          `json:"session_id" example:"abc123def456"`
 	ExpiresAt time.Time       `json:"expires_at" example:"2023-10-15T15:00:00Z"`
 	Message   string          `json:"message" example:"Session created successfully"`
 	Session   SessionResponse `json:"session"`

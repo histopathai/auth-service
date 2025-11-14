@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -66,8 +67,23 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
+	maxAge := int(time.Until(session.ExpiresAt).Seconds())
+	c.SetCookie(
+		"session_id", // name
+		sessionID,    // value
+		maxAge,       // maxAge (seconds)
+		"/",          // path
+		"",           // domain (boş bırak, current domain kullanılır)
+		true,         // secure (HTTPS only)
+		true,         // httpOnly (JavaScript erişemez)
+	)
+
+	c.Header("Set-Cookie", fmt.Sprintf(
+		"session_id=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=Lax",
+		sessionID, maxAge,
+	))
+
 	response := dtoResponse.CreateSessionResponse{
-		SessionID: session.SessionID,
 		ExpiresAt: session.ExpiresAt,
 		Message:   "Session created successfully",
 		Session:   mapToSessionResponse(session),
