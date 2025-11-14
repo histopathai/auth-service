@@ -219,9 +219,12 @@ func (m *AuthMiddleware) RequireSession() gin.HandlerFunc {
 
 func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		details := make(map[string]interface{})
 		// Önce session cookie'ye bak
 		sessionID, err := c.Cookie("session_id")
 		if err == nil && sessionID != "" {
+			details["session_id"] = sessionID
 			// Session varsa validate et
 			session, err := m.sessionService.ValidateSession(c.Request.Context(), sessionID)
 			if err == nil {
@@ -235,6 +238,8 @@ func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
 					return
 				}
 			}
+		} else {
+			details["session_error"] = err.Error()
 		}
 
 		// Session yoksa veya geçersizse, Bearer token'a bak
@@ -252,12 +257,15 @@ func (m *AuthMiddleware) RequireAuthOrSession() gin.HandlerFunc {
 					return
 				}
 			}
+		} else {
+			details["auth_error"] = "Authorization header missing or invalid"
 		}
 
 		// İkisi de yoksa veya geçersizse
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error":   "unauthorized",
 			"message": "Valid session cookie or Bearer token required",
+			"details": details,
 		})
 		c.Abort()
 	}
