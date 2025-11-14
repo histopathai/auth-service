@@ -236,7 +236,16 @@ jobs:
         run: |
           echo "🔧 Initializing Terraform for ${{ needs.setup.outputs.environment }}..."
           terraform init
-
+      - name: Clean up any stale Terraform lock
+        run: |
+          echo "🧹 Checking for stale Terraform locks..."
+          LOCK_ID=$(terraform force-unlock -list 2>/dev/null | awk '{print $1}')
+          if [ -n "$LOCK_ID" ]; then
+            echo "🔓 Removing stale lock: $LOCK_ID"
+            terraform force-unlock -force "$LOCK_ID"
+          else
+            echo "✅ No stale locks found"
+          fi
       - name: Terraform Plan
         run: |
           echo "📊 Running Terraform plan..."
