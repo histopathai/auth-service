@@ -95,7 +95,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		},
 	}
 
-	h.response.Success(c, http.StatusOK, response)
+	h.response.SuccessList(c, response.Data, &response.Pagination)
 }
 
 // GetUser
