@@ -37,7 +37,7 @@ locals {
     image_name = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/${local.service_name}:${var.image_tag}"
     
     # Main service URL
-    main_service_name = var.environment == "prod" ? "main-service" : "main-service-${var.environment}"
+    main_service_name = "main-service"
     main_service_url  = "https://${local.main_service_name}-${local.project_number}.${local.region}.run.app"
 }
 provider "google" {
