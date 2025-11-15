@@ -9,6 +9,7 @@ import (
 	"github.com/histopathai/auth-service/internal/api/http/proxy"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
+	"github.com/histopathai/auth-service/pkg/config"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -32,17 +33,14 @@ type RouterConfig struct {
 	MainServiceURL string
 }
 
-func NewRouter(config *RouterConfig) (*Router, error) {
-	// Initialize handlers
+func NewRouter(config *RouterConfig, appConfig *config.Config) (*Router, error) {
 	authHandler := handler.NewAuthHandler(*config.AuthService, config.Logger)
 	adminHandler := handler.NewAdminHandler(*config.AuthService, config.Logger)
 	healthHandler := handler.NewHealthHandler(config.Logger)
-	sessionHandler := handler.NewSessionHandler(config.SessionService, config.AuthService, config.Logger)
+	sessionHandler := handler.NewSessionHandler(config.SessionService, config.AuthService, appConfig, config.Logger)
 
-	// Initialize middleware
 	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService, config.SessionService)
 
-	// Initialize proxy
 	mainProxy, err := proxy.NewMainServiceProxy(
 		config.MainServiceURL,
 		config.AuthService,
@@ -65,21 +63,27 @@ func NewRouter(config *RouterConfig) (*Router, error) {
 	}, nil
 }
 
-func (r *Router) Setup() *gin.Engine {
+func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
+
+	if len(appConfig.Security.TrustedProxies) > 0 {
+		r.engine.SetTrustedProxies(appConfig.Security.TrustedProxies)
+	}
+
 	// Global middleware
 	r.engine.Use(middleware.RecoveryMiddleware())
 	r.engine.Use(middleware.LoggingMiddleware())
-	r.engine.Use(middleware.CORSMiddleware())
+	r.engine.Use(middleware.CORSMiddleware(appConfig))
 
 	// Rate limiter
 	rateLimiter := middleware.NewRateLimiter(100, 200)
 	r.engine.Use(rateLimiter.RateLimit())
 
 	r.engine.GET("/favicon.ico", func(c *gin.Context) {
-		c.Status(204) // No Content
+		c.Status(204)
 	})
 
 	r.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// API v1 routes
 	v1 := r.engine.Group("/api/v1")
 	{
@@ -93,11 +97,11 @@ func (r *Router) Setup() *gin.Engine {
 		// Auth routes
 		auth := v1.Group("/auth")
 		{
-			// Public endpoints
+			// Public endpoints (no authentication required)
 			auth.POST("/register", r.authHandler.Register)
 			auth.POST("/verify", r.authHandler.VerifyToken)
 
-			// Protected endpoints
+			// Protected endpoints (require session)
 			authenticated := auth.Group("")
 			authenticated.Use(r.authMiddleware.RequireSession())
 			authenticated.Use(r.authMiddleware.RequireStatus(model.StatusActive))
@@ -106,7 +110,7 @@ func (r *Router) Setup() *gin.Engine {
 			}
 		}
 
-		// User routes (protected)
+		// User routes (protected - require session or bearer token)
 		user := v1.Group("/user")
 		user.Use(r.authMiddleware.RequireAuthOrSession())
 		user.Use(r.authMiddleware.RequireStatus(model.StatusActive))
@@ -115,21 +119,21 @@ func (r *Router) Setup() *gin.Engine {
 			user.DELETE("/account", r.authHandler.DeleteAccount)
 		}
 
+		// Session routes
 		sessions := v1.Group("/sessions")
 		{
 			sessions.POST("", r.sessionHandler.CreateSession)
 
-			authenticatedSessions := sessions.Group("")
-			authenticatedSessions.Use(r.authMiddleware.RequireSession())
-			authenticatedSessions.Use(r.authMiddleware.RequireStatus(model.StatusActive))
+			authenticated := sessions.Group("")
+			authenticated.Use(r.authMiddleware.RequireSession())
+			authenticated.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 			{
-				authenticatedSessions.GET("", r.sessionHandler.ListMySessions)
-				authenticatedSessions.GET("/stats", r.sessionHandler.GetMySessionStats)
-				authenticatedSessions.POST("/revoke-all", r.sessionHandler.RevokeAllMySessions)
-				authenticatedSessions.DELETE("/:session_id", r.sessionHandler.RevokeSession)
-				authenticatedSessions.POST("/:session_id/extend", r.sessionHandler.ExtendSession)
+				authenticated.GET("", r.sessionHandler.ListMySessions)
+				authenticated.GET("/stats", r.sessionHandler.GetMySessionStats)
+				authenticated.POST("/revoke-all", r.sessionHandler.RevokeAllMySessions)
+				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
+				authenticated.POST("/:session_id/extend", r.sessionHandler.ExtendSession)
 			}
-
 		}
 
 		// Admin routes (admin only)
@@ -157,8 +161,6 @@ func (r *Router) Setup() *gin.Engine {
 		}
 
 		// Main service proxy routes
-		// All requests to /api/v1/proxy/* will be forwarded to main-service
-		// Authentication is handled by the proxy middleware
 		proxy := v1.Group("/proxy")
 		{
 			proxy.Any("/*proxyPath", r.mainProxy.Handler())
@@ -167,29 +169,29 @@ func (r *Router) Setup() *gin.Engine {
 
 	r.logger.Info("Router setup completed",
 		"routes", []string{
-			"POST /api/v1/auth/register",
-			"POST /api/v1/auth/verify",
-			"PUT /api/v1/auth/password",
-			"GET /api/v1/user/profile",
-			"DELETE /api/v1/user/account",
-			"POST /api/v1/sessions",
-			"GET /api/v1/sessions",
-			"GET /api/v1/sessions/stats",
-			"POST /api/v1/sessions/revoke-all",
-			"DELETE /api/v1/sessions/:session_id",
-			"POST /api/v1/sessions/:session_id/extend",
-			"GET /api/v1/admin/users",
-			"GET /api/v1/admin/users/:user_id",
-			"POST /api/v1/admin/users/:user_id/approve",
-			"POST /api/v1/admin/users/:user_id/suspend",
-			"POST /api/v1/admin/users/:user_id/make-admin",
-			"POST /api/v1/admin/users/:user_id/change-password",
-			"GET /api/v1/admin/users/:user_id/sessions",
-			"DELETE /api/v1/admin/users/:user_id/sessions",
-			"DELETE /api/v1/admin/sessions/:session_id",
-			"ANY /api/v1/proxy/*proxyPath",
-			"GET /api/v1/health",
-			"GET /api/v1/health/ready",
+			"POST /api/v1/auth/register (public)",
+			"POST /api/v1/auth/verify (public)",
+			"PUT /api/v1/auth/password (session required)",
+			"GET /api/v1/user/profile (auth or session)",
+			"DELETE /api/v1/user/account (auth or session)",
+			"POST /api/v1/sessions (token in body)",
+			"GET /api/v1/sessions (session required)",
+			"GET /api/v1/sessions/stats (session required)",
+			"POST /api/v1/sessions/revoke-all (session required)",
+			"DELETE /api/v1/sessions/:session_id (session required)",
+			"POST /api/v1/sessions/:session_id/extend (session required)",
+			"GET /api/v1/admin/users (admin + bearer)",
+			"GET /api/v1/admin/users/:user_id (admin + bearer)",
+			"POST /api/v1/admin/users/:user_id/approve (admin + bearer)",
+			"POST /api/v1/admin/users/:user_id/suspend (admin + bearer)",
+			"POST /api/v1/admin/users/:user_id/make-admin (admin + bearer)",
+			"POST /api/v1/admin/users/:user_id/change-password (admin + bearer)",
+			"GET /api/v1/admin/users/:user_id/sessions (admin + bearer)",
+			"DELETE /api/v1/admin/users/:user_id/sessions (admin + bearer)",
+			"DELETE /api/v1/admin/sessions/:session_id (admin + bearer)",
+			"ANY /api/v1/proxy/*proxyPath (auth or session)",
+			"GET /api/v1/health (public)",
+			"GET /api/v1/health/ready (public)",
 		},
 	)
 
