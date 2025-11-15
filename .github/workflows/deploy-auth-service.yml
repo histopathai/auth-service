@@ -37,17 +37,17 @@ jobs:
         id: set-env
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            ENV="${{ inputs.environment }}"
+            ENVIRONMENT="${{ inputs.environment }}"
           elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            ENV="prod"
+            ENVIRONMENT="prod"
           elif [ "${{ github.ref }}" == "refs/heads/dev" ]; then
-            ENV="dev"
+            ENVIRONMENT="dev"
           else
-            ENV="dev"
+            ENVIRONMENT="dev"
           fi
           
-          echo "environment=${ENV}" >> $GITHUB_OUTPUT
-          echo "🌍 Environment: ${ENV}"
+          echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+          echo "🌍 Environment: ${ENVIRONMENT}"
 
   build-and-push:
     name: Build and Push Docker Image

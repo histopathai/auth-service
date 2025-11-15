@@ -41,7 +41,7 @@ func (fur *FirestoreUserRepositoryImpl) GetByUserID(ctx context.Context, userID 
 	if err != nil {
 		return nil, MapFirestoreError(err)
 	}
-
+	user.UserID = userID
 	return user, nil
 }
 

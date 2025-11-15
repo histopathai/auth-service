@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
+	"github.com/histopathai/auth-service/pkg/config"
 )
 
 type MainServiceProxy struct {
@@ -24,12 +25,14 @@ type MainServiceProxy struct {
 	authService    *service.AuthService
 	sessionService *service.SessionService
 	logger         *slog.Logger
+	config         *config.Config
 }
 
 func NewMainServiceProxy(
 	targetBaseURL string,
 	authService *service.AuthService,
 	sessionService *service.SessionService,
+	config *config.Config,
 	logger *slog.Logger,
 ) (*MainServiceProxy, error) {
 	target, err := url.Parse(targetBaseURL)
@@ -46,6 +49,7 @@ func NewMainServiceProxy(
 		targetURL:      target,
 		authService:    authService,
 		sessionService: sessionService,
+		config:         config,
 		logger:         logger,
 	}
 
@@ -83,7 +87,7 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 	req.URL.Path = newPath
 	req.Host = msp.targetURL.Host
 
-	// Move Sesion Token to Header
+	// Move Session Token to Header
 	if sessionID := req.URL.Query().Get("session"); sessionID != "" {
 		req.Header.Set("X-Session-ID", sessionID)
 
@@ -98,7 +102,6 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 	}
 
 	// Move user info to headers from context
-
 	if userID, ok := req.Context().Value("user_id").(string); ok {
 		req.Header.Set("X-User-ID", userID)
 	}
@@ -115,6 +118,13 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 func (msp *MainServiceProxy) modifyResponse(resp *http.Response) error {
 	statusCode := resp.StatusCode
 	requestURL := resp.Request.URL.String()
+
+	// Remove any CORS headers from backend - we'll handle them in the Handler
+	resp.Header.Del("Access-Control-Allow-Origin")
+	resp.Header.Del("Access-Control-Allow-Credentials")
+	resp.Header.Del("Access-Control-Allow-Methods")
+	resp.Header.Del("Access-Control-Allow-Headers")
+	resp.Header.Del("Access-Control-Max-Age")
 
 	if statusCode >= 200 && statusCode < 300 {
 		msp.logger.Debug("Proxy response",
@@ -179,17 +189,46 @@ func (msp *MainServiceProxy) errorHandler(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(errorResponse)
 }
 
+// isOriginAllowed checks if the origin is in the allowed list
+func (msp *MainServiceProxy) isOriginAllowed(origin string) bool {
+	if origin == "" {
+		return false
+	}
+
+	for _, allowed := range msp.config.CORS.AllowedOrigins {
+		if allowed == origin || allowed == "*" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// setCORSHeaders sets appropriate CORS headers based on origin
+func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
+	origin := c.Request.Header.Get("Origin")
+
+	// Only set CORS headers if origin is allowed
+	if msp.isOriginAllowed(origin) {
+		// NEVER use wildcard with credentials
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, Cookie")
+		c.Writer.Header().Set("Access-Control-Max-Age", "3600")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
+	}
+}
+
 // Handler returns the Gin handler function
 func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
-		// CORS headers
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID")
+		// Set CORS headers first
+		msp.setCORSHeaders(c)
 
-		// Handle OPTIONS requests
+		// Handle OPTIONS requests (preflight)
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusOK)
 			return
@@ -246,24 +285,23 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 
 func (msp *MainServiceProxy) authenticateRequest(c *gin.Context) (*model.User, error) {
 	// 1. Try session authentication first (highest priority)
-	if sessionID := c.Query("session"); sessionID != "" {
-		msp.logger.Debug("Attempting session authentication",
+	if sessionID, err := c.Cookie("session_id"); err == nil && sessionID != "" {
+		msp.logger.Debug("Attempting session cookie authentication",
 			"session_id", sessionID[:min(8, len(sessionID))],
 		)
 
 		session, err := msp.sessionService.ValidateAndExtend(c.Request.Context(), sessionID)
 		if err == nil && session != nil {
-			// Get user from session
 			user, err := msp.authService.GetUserByUserID(c.Request.Context(), session.UserID)
 			if err == nil {
-				msp.logger.Debug("Session authentication successful",
+				msp.logger.Debug("Session cookie authentication successful",
 					"user_id", user.UserID,
 				)
 				return user, nil
 			}
 		}
 
-		msp.logger.Warn("Session authentication failed",
+		msp.logger.Warn("Session cookie authentication failed",
 			"session_id", sessionID[:min(8, len(sessionID))],
 			"error", err,
 		)
