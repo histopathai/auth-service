@@ -99,7 +99,7 @@ func LoadConfig() *Config {
 			Name:     "session_id",
 			Domain:   getEnv("COOKIE_DOMAIN", ""), // e.g., ".yourdomain.com"
 			Secure:   true,
-			SameSite: "Lax",
+			SameSite: "None",
 			HTTPOnly: true,
 			MaxAge:   1800, // 30 minutes
 		}
