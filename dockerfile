@@ -11,6 +11,8 @@ RUN go mod download
 
 COPY . .
 
+RUN go mod tidy
+
 RUN go run github.com/swaggo/swag/cmd/swag init --output ./docs --dir ./... --generalInfo ./cmd/main.go
 
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o auth-service ./cmd/main.go
