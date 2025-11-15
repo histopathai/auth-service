@@ -64,7 +64,7 @@ type Config struct {
 
 // LoadConfig reads configuration from environment variables
 func LoadConfig() *Config {
-	env := getEnv("ENVIRONMENT", "development")
+	env := getEnv("ENVIRONMENT", "dev")
 
 	// Start with development defaults
 	cfg := &Config{
@@ -89,7 +89,7 @@ func LoadConfig() *Config {
 
 	// Environment-specific overrides
 	switch env {
-	case "production":
+	case "prod":
 		cfg.MainServiceURL = getEnv("MAIN_SERVICE_URL", "") // Must be set in prod
 		cfg.Server.GINMode = "release"
 		cfg.Logging.Level = getEnv("LOG_LEVEL", "info")
@@ -114,31 +114,7 @@ func LoadConfig() *Config {
 			TrustedProxies: []string{}, // Cloud Run internal IPs
 		}
 
-	case "staging":
-		cfg.MainServiceURL = getEnv("MAIN_SERVICE_URL", "") // Must be set in staging
-		cfg.Server.GINMode = "release"
-		cfg.Logging.Level = getEnv("LOG_LEVEL", "info")
-		cfg.Logging.Format = getEnv("LOG_FORMAT", "json")
-
-		cfg.Cookie = CookieConfig{
-			Name:     "session_id",
-			Domain:   getEnv("COOKIE_DOMAIN", ""),
-			Secure:   true,
-			SameSite: "Lax",
-			HTTPOnly: true,
-			MaxAge:   1800,
-		}
-		cfg.CORS = CORSConfig{
-			AllowedOrigins: []string{
-				getEnv("FRONTEND_URL", "https://staging.yourdomain.com"),
-			},
-			AllowCredentials: true,
-		}
-		cfg.Security = SecurityConfig{
-			TrustedProxies: []string{""},
-		}
-
-	default: // development
+	default: // dev
 		cfg.MainServiceURL = getEnv("MAIN_SERVICE_URL", "http://localhost:8081")
 		// GINMode, Logging level/format already set to dev defaults
 
@@ -160,7 +136,7 @@ func LoadConfig() *Config {
 			AllowCredentials: true,
 		}
 		cfg.Security = SecurityConfig{
-			TrustedProxies: nil, // Trust all in development
+			TrustedProxies: nil, // Trust all in dev
 		}
 		cfg.TLS = TLSConfig{
 			CertPath: getEnv("CERT_PATH", ""),
