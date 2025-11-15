@@ -87,7 +87,7 @@ resource "google_cloud_run_v2_service" "auth_service" {
         }
 
         env {
-            name = "ENV"
+            name = "ENVIRONMENT"
             value = var.environment
         }
 
