@@ -142,7 +142,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 
 		// Admin routes (admin only)
 		admin := v1.Group("/admin")
-		admin.Use(r.authMiddleware.RequireAuth())
+		admin.Use(r.authMiddleware.RequireAuthOrSession())
 		admin.Use(r.authMiddleware.RequireRole(model.RoleAdmin))
 		admin.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 		{
