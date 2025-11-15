@@ -20,7 +20,8 @@ data "terraform_remote_state" "platform" {
   
   config = {
     bucket = "tf-state-histopathai-platform"
-    prefix = "platform/prod"
+    # Use environment-specific platform state
+    prefix = var.environment == "prod" ? "platform/prod" : "platform/${var.environment}"
   }
 }
 
@@ -30,12 +31,15 @@ locals {
     region     = data.terraform_remote_state.platform.outputs.region
     service_account = data.terraform_remote_state.platform.outputs.auth_service_account_email
     artifact_repository_id = data.terraform_remote_state.platform.outputs.artifact_repository_id
+    
+    # Separate service names per environment
     service_name = var.environment == "prod" ? "auth-service" : "auth-service-${var.environment}"
     image_name = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/${local.service_name}:${var.image_tag}"
+    
+    # Main service URL
     main_service_name = var.environment == "prod" ? "main-service" : "main-service-${var.environment}"
     main_service_url  = "https://${local.main_service_name}-${local.project_number}.${local.region}.run.app"
 }
-
 provider "google" {
   project = local.project_id
   region  = local.region
@@ -133,12 +137,12 @@ resource "google_cloud_run_v2_service" "auth_service" {
 
         env {
             name  = "COOKIE_DOMAIN"
-            value = var.cookie_domain # This will pull from your TF_VAR_PROD
+            value = var.cookie_domain
         }
 
         env {
             name  = "ALLOWED_ORIGIN"
-            value = var.allowed_origin # This will pull from your TF_VAR_PROD
+            value = var.allowed_origin
         }
     }
     }
