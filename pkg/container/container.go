@@ -111,8 +111,9 @@ func (c *Container) initHTTPLayer(ctx context.Context) error {
 	routerConfig := &router.RouterConfig{
 		AuthService:    c.AuthService,
 		SessionService: c.SessionService,
-		Logger:         c.Logger.Logger, // Router da slog.Logger bekliyor
+		Logger:         c.Logger.Logger,
 		MainServiceURL: c.Config.MainServiceURL,
+		Config:         c.Config,
 	}
 
 	appRouter, err := router.NewRouter(routerConfig, c.Config)
