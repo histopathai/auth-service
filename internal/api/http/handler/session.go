@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,18 +11,77 @@ import (
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
+	"github.com/histopathai/auth-service/pkg/config"
 )
+
+func (h *SessionHandler) setSessionCookie(c *gin.Context, sessionID string, expiresAt time.Time) {
+	cookieCfg := h.config.Cookie
+	maxAge := int(time.Until(expiresAt).Seconds())
+
+	c.SetSameSite(h.getSameSiteMode(cookieCfg.SameSite))
+	c.SetCookie(
+		cookieCfg.Name,     // name
+		sessionID,          // value
+		maxAge,             // maxAge
+		"/",                // path
+		cookieCfg.Domain,   // domain
+		cookieCfg.Secure,   // secure (HTTPS only)
+		cookieCfg.HTTPOnly, // httpOnly
+	)
+
+	h.logger.Debug("Session cookie set",
+		"environment", h.config.Server.Environment,
+		"secure", cookieCfg.Secure,
+		"sameSite", cookieCfg.SameSite,
+		"domain", cookieCfg.Domain,
+	)
+}
+
+func (h *SessionHandler) clearSessionCookie(c *gin.Context) {
+	cookieCfg := h.config.Cookie
+
+	c.SetSameSite(h.getSameSiteMode(cookieCfg.SameSite))
+	c.SetCookie(
+		cookieCfg.Name,
+		"",
+		-1, // Delete immediately
+		"/",
+		cookieCfg.Domain,
+		cookieCfg.Secure,
+		cookieCfg.HTTPOnly,
+	)
+}
+
+func (h *SessionHandler) getSameSiteMode(mode string) http.SameSite {
+	switch mode {
+	case "Strict":
+		return http.SameSiteStrictMode
+	case "None":
+		return http.SameSiteNoneMode
+	case "Lax":
+		fallthrough
+	default:
+		return http.SameSiteLaxMode
+	}
+}
 
 type SessionHandler struct {
 	sessionService *service.SessionService
 	authService    *service.AuthService
+	config         *config.Config
 	BaseHandler
 }
 
-func NewSessionHandler(sessionService *service.SessionService, authService *service.AuthService, logger *slog.Logger) *SessionHandler {
+func NewSessionHandler(
+	sessionService *service.SessionService,
+	authService *service.AuthService,
+	config *config.Config,
+	logger *slog.Logger,
+) *SessionHandler {
 	return &SessionHandler{
 		sessionService: sessionService,
 		authService:    authService,
+		config:         config,
 		BaseHandler:    BaseHandler{logger: logger, response: &ResponseHelper{}},
 	}
 }
@@ -53,6 +111,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
+
 	// Create session
 	sessionID, err := h.sessionService.CreateSession(c.Request.Context(), user.UserID)
 	if err != nil {
@@ -67,12 +126,8 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	maxAge := int(time.Until(session.ExpiresAt).Seconds())
-
-	c.Header("Set-Cookie", fmt.Sprintf(
-		"session_id=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
-		sessionID, maxAge,
-	))
+	// Set cookie with environment-aware configuration
+	h.setSessionCookie(c, sessionID, session.ExpiresAt)
 
 	response := dtoResponse.CreateSessionResponse{
 		ExpiresAt: session.ExpiresAt,
@@ -270,7 +325,6 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	// Verify session belongs to user
 	session, err := h.sessionService.ValidateSession(c.Request.Context(), sessionID)
 	if err != nil {
 		h.handleError(c, err)
@@ -282,10 +336,14 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 		return
 	}
 
-	// Revoke session
 	if err := h.sessionService.RevokeSession(c.Request.Context(), sessionID); err != nil {
 		h.handleError(c, err)
 		return
+	}
+
+	// Clear cookie if it's the current session
+	if currentSessionID, _ := c.Cookie(h.config.Cookie.Name); currentSessionID == sessionID {
+		h.clearSessionCookie(c)
 	}
 
 	response := dtoResponse.RevokeSessionResponse{
