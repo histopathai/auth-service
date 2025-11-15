@@ -1,0 +1,16 @@
+{
+  "environment": "dev",
+  "min_instances": 1,
+  "max_instances": 2,
+  "cpu_limit": "1",
+  "memory_limit": "512Mi",
+  "read_timeout": "15",
+  "write_timeout": "15",
+  "idle_timeout": "60",
+  "allow_public_access": true,
+  "allowed_origin": "http://localhost:5173",
+  "cookie_domain": "",
+  "log_levels": "debug",
+  "log_format": "json",
+  "image_tag": "latest"
+}

@@ -189,35 +189,19 @@ func (msp *MainServiceProxy) errorHandler(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(errorResponse)
 }
 
-// isOriginAllowed checks if the origin is in the allowed list
-func (msp *MainServiceProxy) isOriginAllowed(origin string) bool {
-	if origin == "" {
-		return false
-	}
-
-	for _, allowed := range msp.config.CORS.AllowedOrigins {
-		if allowed == origin || allowed == "*" {
-			return true
-		}
-	}
-
-	return false
-}
-
-// setCORSHeaders sets appropriate CORS headers based on origin
 func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
 	origin := c.Request.Header.Get("Origin")
 
-	// Only set CORS headers if origin is allowed
-	if msp.isOriginAllowed(origin) {
-		// NEVER use wildcard with credentials
-		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, Cookie")
-		c.Writer.Header().Set("Access-Control-Max-Age", "3600")
-		c.Writer.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
+	if origin != msp.config.AllowedOrigin {
+		return
 	}
+
+	c.Writer.Header().Set("Access-Control-Allow-Origin", msp.config.AllowedOrigin)
+	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, Cookie")
+	c.Writer.Header().Set("Access-Control-Max-Age", "3600")
+	c.Writer.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
 }
 
 // Handler returns the Gin handler function

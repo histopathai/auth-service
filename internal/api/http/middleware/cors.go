@@ -1,19 +1,32 @@
 package middleware
 
 import (
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/histopathai/auth-service/pkg/config"
 )
 
 func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
-	corsConfig := cors.Config{
-		AllowOrigins:     cfg.CORS.AllowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		AllowCredentials: cfg.CORS.AllowCredentials,
-		MaxAge:           12 * 3600, // 12 hours
-	}
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
 
-	return cors.New(corsConfig)
+		// Sadece configured origin'i kabul et (dev'de extension bypass eder zaten)
+		if origin != cfg.AllowedOrigin {
+			c.Next()
+			return
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", cfg.AllowedOrigin)
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Cookie")
+		c.Writer.Header().Set("Access-Control-Max-Age", "3600")
+
+		// Preflight request handling
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }

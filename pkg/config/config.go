@@ -32,12 +32,6 @@ type CookieConfig struct {
 	MaxAge   int // in seconds
 }
 
-// CORSConfig holds settings for Cross-Origin Resource Sharing
-type CORSConfig struct {
-	AllowedOrigins   []string
-	AllowCredentials bool
-}
-
 // SecurityConfig holds security-related settings
 type SecurityConfig struct {
 	TrustedProxies []string
@@ -48,30 +42,28 @@ type TLSConfig struct {
 	KeyPath  string
 }
 
-// Config is the top-level application configuration
 type Config struct {
 	ProjectID      string
 	Region         string
 	ProjectNumber  string
 	MainServiceURL string
+	AllowedOrigin  string
 	Server         ServerConfig
 	Cookie         CookieConfig
-	CORS           CORSConfig
 	Security       SecurityConfig
 	TLS            TLSConfig
 	Logging        LoggingConfig
 }
 
-// LoadConfig reads configuration from environment variables
 func LoadConfig() *Config {
 	env := getEnv("ENVIRONMENT", "dev")
 
-	// Start with development defaults
 	cfg := &Config{
 		ProjectID:      getEnv("PROJECT_ID", ""),
 		Region:         getEnv("REGION", ""),
 		ProjectNumber:  getEnv("PROJECT_NUMBER", ""),
 		MainServiceURL: getEnv("MAIN_SERVICE_URL", "http://localhost:8081"),
+		AllowedOrigin:  getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8080"),
 			Environment:  env,
@@ -87,57 +79,22 @@ func LoadConfig() *Config {
 		},
 	}
 
+	cfg.Cookie = CookieConfig{
+		Name:     "session_id",
+		Domain:   getEnv("COOKIE_DOMAIN", ""),
+		Secure:   true,
+		SameSite: "None",
+		HTTPOnly: true,
+		MaxAge:   1800,
+	}
+
 	// Environment-specific overrides
-	switch env {
-	case "prod":
-		cfg.MainServiceURL = getEnv("MAIN_SERVICE_URL", "") // Must be set in prod
+	if env == "prod" {
 		cfg.Server.GINMode = "release"
 		cfg.Logging.Level = getEnv("LOG_LEVEL", "info")
 		cfg.Logging.Format = getEnv("LOG_FORMAT", "json")
+	} else {
 
-		cfg.Cookie = CookieConfig{
-			Name:     "session_id",
-			Domain:   getEnv("COOKIE_DOMAIN", ""), // e.g., ".yourdomain.com"
-			Secure:   true,
-			SameSite: "None",
-			HTTPOnly: true,
-			MaxAge:   1800, // 30 minutes
-		}
-		cfg.CORS = CORSConfig{
-			AllowedOrigins: []string{
-				getEnv("FRONTEND_URL", "https://histopathai.com"),
-				"https://localhost:5173",
-			},
-			AllowCredentials: true,
-		}
-		cfg.Security = SecurityConfig{
-			TrustedProxies: []string{}, // Cloud Run internal IPs
-		}
-
-	default: // dev
-		cfg.MainServiceURL = getEnv("MAIN_SERVICE_URL", "http://localhost:8081")
-		// GINMode, Logging level/format already set to dev defaults
-
-		cfg.Cookie = CookieConfig{
-			Name:     "session_id",
-			Domain:   "", // Current domain
-			Secure:   false,
-			SameSite: "Lax",
-			HTTPOnly: true,
-			MaxAge:   1800,
-		}
-		cfg.CORS = CORSConfig{
-			AllowedOrigins: []string{
-				"http://localhost:5173",
-				"http://localhost:3000",
-				"https://localhost:5173",
-				"http://127.0.0.1:5173",
-			},
-			AllowCredentials: true,
-		}
-		cfg.Security = SecurityConfig{
-			TrustedProxies: nil, // Trust all in dev
-		}
 		cfg.TLS = TLSConfig{
 			CertPath: getEnv("CERT_PATH", ""),
 			KeyPath:  getEnv("KEY_PATH", ""),

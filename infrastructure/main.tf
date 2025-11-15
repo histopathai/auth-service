@@ -71,7 +71,7 @@ resource "google_cloud_run_v2_service" "auth_service" {
             container_port = 8080
         }
 
-        env {
+        env { 
             name = "PROJECT_ID"
             value = local.project_id
         }
@@ -103,22 +103,22 @@ resource "google_cloud_run_v2_service" "auth_service" {
 
         env {
             name = "LOG_FORMAT"
-            value = "json"
+            value = var.log_format
         }
 
         env {
             name  = "READ_TIMEOUT"
-            value = "15"
+            value = var.read_timeout
         }
 
         env {
             name  = "WRITE_TIMEOUT"
-            value = "15"
+            value = var.write_timeout
         }
 
         env {
             name  = "IDLE_TIMEOUT"
-            value = "60"
+            value = var.idle_timeout
         }
 
         env {
@@ -137,8 +137,8 @@ resource "google_cloud_run_v2_service" "auth_service" {
         }
 
         env {
-            name  = "FRONTEND_URL"
-            value = var.frontend_url # This will pull from your TF_VAR_PROD
+            name  = "ALLOWED_ORIGIN"
+            value = var.allowed_origin # This will pull from your TF_VAR_PROD
         }
     }
     }
