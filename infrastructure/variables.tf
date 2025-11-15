@@ -63,3 +63,15 @@ variable "image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "cookie_domain" {
+  description = "Domain for session cookies (e.g., .histopathai.com)"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_url" {
+  description = "The base URL of the frontend for CORS"
+  type        = string
+  default     = ""
+}
