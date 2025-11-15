@@ -99,14 +99,13 @@ func LoadConfig() *Config {
 			Name:     "session_id",
 			Domain:   getEnv("COOKIE_DOMAIN", ""), // e.g., ".yourdomain.com"
 			Secure:   true,
-			SameSite: "None",
+			SameSite: "Lax",
 			HTTPOnly: true,
 			MaxAge:   1800, // 30 minutes
 		}
 		cfg.CORS = CORSConfig{
 			AllowedOrigins: []string{
 				getEnv("FRONTEND_URL", "https://histopathai.com"),
-				"https://localhost:5173",
 			},
 			AllowCredentials: true,
 		}
@@ -122,7 +121,7 @@ func LoadConfig() *Config {
 			Name:     "session_id",
 			Domain:   "", // Current domain
 			Secure:   false,
-			SameSite: "Lax",
+			SameSite: "None",
 			HTTPOnly: true,
 			MaxAge:   1800,
 		}
