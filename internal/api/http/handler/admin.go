@@ -141,13 +141,13 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param user_id path string true "User UserID"
-// @Success 200 {object} response.UserActionResponse "User approved successfully"
+// @Success 204 "User approved successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/approve [post]
+// @Router /admin/users/{user_id}/approve [put]
 func (h *AdminHandler) ApproveUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -160,15 +160,7 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
-
-	response := dtoResponse.UserActionResponse{
-		Message: "User approved successfully",
-		User:    mapToUserResponse(user),
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
 
 // ChangePasswordForUser
@@ -186,7 +178,7 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/change-password [post]
+// @Router /admin/users/{user_id}/change-password [put]
 func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -223,7 +215,7 @@ func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/suspend [post]
+// @Router /admin/users/{user_id}/suspend [put]
 func (h *AdminHandler) SuspendUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -237,15 +229,7 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 		return
 	}
 
-	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
-
-	response := dtoResponse.UserActionResponse{
-		Message: "User suspended successfully",
-		User:    mapToUserResponse(user),
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
 
 // MakeAdmin
@@ -256,13 +240,13 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param user_id path string true "User UserID"
-// @Success 200 {object} response.UserActionResponse "User granted admin role successfully"
+// @Success 204 "User granted admin role successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/make-admin [post]
+// @Router /admin/users/{user_id}/make-admin [put]
 func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -275,14 +259,5 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-
-	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
-
-	response := dtoResponse.UserActionResponse{
-		Message: "User granted admin role successfully",
-		User:    mapToUserResponse(user),
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
