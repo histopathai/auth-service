@@ -1,35 +1,55 @@
-# -----------------------------
-# Project Configuration
-# -----------------------------
+# ==============================
+# terraform.tfvars.example
+# ==============================
 
-project_id      = "histopathai"
-project_number  = "12314325342534"
-region          = "europe-west1"
-environment     = "prod"
+# -----------------------------
+# Environment
+# -----------------------------
+environment = "dev"  # or "prod"
 
-# ------------------------------
+
+# -----------------------------
 # Scaling Configuration
-# ------------------------------
+# -----------------------------
 min_instances = 1
 max_instances = 2
 
-# ------------------------------
+
+# -----------------------------
 # Resource Configuration
-# ------------------------------
+# -----------------------------
 cpu_limit    = "1"
 memory_limit = "512Mi"
 
-# ------------------------------
+
+# -----------------------------
+# Timeout Configuration
+# -----------------------------
+read_timeout  = "15"
+write_timeout = "15"
+idle_timeout  = "60"
+
+
+# -----------------------------
 # Access Configuration
-# ------------------------------
+# -----------------------------
 allow_public_access = true
 
-# ------------------------------
-# Logging Configuration
-# ------------------------------
-log_levels = "info"
+# CORS
+allowed_origin = "http://localhost:5173"
 
-# ------------------------------
+# Cookies
+cookie_domain = ""
+
+
+# -----------------------------
+# Logging Configuration
+# -----------------------------
+log_levels = "debug"  # dev için debug, prod için info
+log_format = "json"
+
+
+# -----------------------------
 # Image Tag
-# ------------------------------
+# -----------------------------
 image_tag = "latest"
