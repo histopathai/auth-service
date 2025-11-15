@@ -21,7 +21,7 @@ data "terraform_remote_state" "platform" {
   config = {
     bucket = "tf-state-histopathai-platform"
     # Use environment-specific platform state
-    prefix = var.environment == "prod" ? "platform/prod" : "platform/${var.environment}"
+    prefix = "platform/prod"
   }
 }
 
