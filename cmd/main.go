@@ -76,7 +76,7 @@ func main() {
 
 	go func() {
 		appLogger.Info("Starting HTTP server", "port", appConfig.Server.Port)
-		if *useHTTPS && appConfig.Server.Environment == "development" {
+		if *useHTTPS && appConfig.Server.Environment == "dev" {
 			appLogger.Info("HTTPS enabled for development",
 				"cert_path", appConfig.TLS.CertPath,
 				"key_path", appConfig.TLS.KeyPath,
