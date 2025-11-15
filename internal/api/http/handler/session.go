@@ -112,6 +112,20 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
+	h.logger.Info("CreateSession - User from VerifyToken",
+		"user_id", user.UserID,
+		"email", user.Email,
+		"display_name", user.DisplayName,
+	)
+
+	if user.UserID == "" {
+		h.logger.Error("CreateSession - UserID is empty!",
+			"user", user,
+		)
+		h.handleError(c, errors.NewInternalError("User ID is empty after token verification", nil))
+		return
+	}
+
 	// Create session
 	sessionID, err := h.sessionService.CreateSession(c.Request.Context(), user.UserID)
 	if err != nil {
