@@ -246,24 +246,23 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 
 func (msp *MainServiceProxy) authenticateRequest(c *gin.Context) (*model.User, error) {
 	// 1. Try session authentication first (highest priority)
-	if sessionID := c.Query("session"); sessionID != "" {
-		msp.logger.Debug("Attempting session authentication",
+	if sessionID, err := c.Cookie("session_id"); err == nil && sessionID != "" {
+		msp.logger.Debug("Attempting session cookie authentication",
 			"session_id", sessionID[:min(8, len(sessionID))],
 		)
 
 		session, err := msp.sessionService.ValidateAndExtend(c.Request.Context(), sessionID)
 		if err == nil && session != nil {
-			// Get user from session
 			user, err := msp.authService.GetUserByUserID(c.Request.Context(), session.UserID)
 			if err == nil {
-				msp.logger.Debug("Session authentication successful",
+				msp.logger.Debug("Session cookie authentication successful",
 					"user_id", user.UserID,
 				)
 				return user, nil
 			}
 		}
 
-		msp.logger.Warn("Session authentication failed",
+		msp.logger.Warn("Session cookie authentication failed",
 			"session_id", sessionID[:min(8, len(sessionID))],
 			"error", err,
 		)
