@@ -8,8 +8,7 @@ RUN apk add --no-cache git
 COPY go.mod go.sum ./
 
 RUN go mod tidy && \
-    go get github.com/swaggo/gin-swagger@v1.6.0 && \
-    go get github.com/swaggo/swag@v1.8.12 && \
+    go get -u github.com/swaggo/swag && \
     go mod tidy
 
 RUN go mod download
