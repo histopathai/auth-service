@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"log/slog"
+	"flag"
 	"net/http"
 	"os"
 	"os/signal"
@@ -38,19 +38,21 @@ import (
 
 func main() {
 
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		slog.Error("Failed to load configuration", "error", err)
-		os.Exit(1)
-	}
+	useHTTPS := flag.Bool("https", false, "Enable HTTPS (TLS) for development")
+	flag.Parse()
 
-	appLogger := logger.New(&cfg.Logging)
-	slog.SetDefault(appLogger.Logger)
+	appConfig := config.LoadConfig()
 
-	appLogger.Info("Logger initialized", "level", cfg.Logging.Level, "format", cfg.Logging.Format)
+	appLogger := logger.New(&appConfig.Logging)
+
+	appLogger.Info("Starting application",
+		"environment", appConfig.Server.Environment,
+		"cookie_secure", appConfig.Cookie.Secure,
+		"cookie_samesite", appConfig.Cookie.SameSite,
+	)
 
 	ctx := context.Background()
-	appContainer, err := container.New(ctx, cfg, appLogger)
+	appContainer, err := container.New(ctx, appConfig, appLogger)
 	if err != nil {
 		appLogger.Error("Failed to initialize application container", "error", err)
 		os.Exit(1)
@@ -62,21 +64,33 @@ func main() {
 		}
 	}()
 
-	engine := appContainer.Router.Setup()
+	engine := appContainer.Router.Setup(appConfig)
 
 	server := &http.Server{
-		Addr:         ":" + cfg.Server.Port,
+		Addr:         ":" + appConfig.Server.Port,
 		Handler:      engine,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  time.Duration(cfg.Server.IdleTimeout) * time.Second,
+		ReadTimeout:  time.Duration(appConfig.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(appConfig.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  time.Duration(appConfig.Server.IdleTimeout) * time.Second,
 	}
 
 	go func() {
-		appLogger.Info("Starting HTTP server", "port", cfg.Server.Port)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			appLogger.Error("HTTP server error", "error", err)
-			os.Exit(1)
+		appLogger.Info("Starting HTTP server", "port", appConfig.Server.Port)
+		if *useHTTPS && appConfig.Server.Environment == "development" {
+			appLogger.Info("HTTPS enabled for development",
+				"cert_path", appConfig.TLS.CertPath,
+				"key_path", appConfig.TLS.KeyPath,
+			)
+			if err := server.ListenAndServeTLS(appConfig.TLS.CertPath, appConfig.TLS.KeyPath); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				appLogger.Error("HTTPS server error", "error", err)
+				os.Exit(1)
+			}
+
+		} else {
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				appLogger.Error("HTTP server error", "error", err)
+				os.Exit(1)
+			}
 		}
 	}()
 
