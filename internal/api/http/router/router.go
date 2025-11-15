@@ -24,6 +24,7 @@ type Router struct {
 	authMiddleware *middleware.AuthMiddleware
 	logger         *slog.Logger
 	mainProxy      *proxy.MainServiceProxy
+	Config         *config.Config
 }
 
 type RouterConfig struct {
@@ -31,6 +32,7 @@ type RouterConfig struct {
 	SessionService *service.SessionService
 	Logger         *slog.Logger
 	MainServiceURL string
+	Config         *config.Config
 }
 
 func NewRouter(config *RouterConfig, appConfig *config.Config) (*Router, error) {
@@ -41,10 +43,12 @@ func NewRouter(config *RouterConfig, appConfig *config.Config) (*Router, error) 
 
 	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService, config.SessionService)
 
+	// Pass config to proxy
 	mainProxy, err := proxy.NewMainServiceProxy(
 		config.MainServiceURL,
 		config.AuthService,
 		config.SessionService,
+		config.Config,
 		config.Logger,
 	)
 	if err != nil {
