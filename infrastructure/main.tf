@@ -130,6 +130,16 @@ resource "google_cloud_run_v2_service" "auth_service" {
             name  = "MAIN_SERVICE_NAME"
             value = local.main_service_name
         }
+
+        env {
+            name  = "COOKIE_DOMAIN"
+            value = var.cookie_domain # This will pull from your TF_VAR_PROD
+        }
+
+        env {
+            name  = "FRONTEND_URL"
+            value = var.frontend_url # This will pull from your TF_VAR_PROD
+        }
     }
     }
     
