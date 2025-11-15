@@ -115,7 +115,7 @@ func (c *Container) initHTTPLayer(ctx context.Context) error {
 		MainServiceURL: c.Config.MainServiceURL,
 	}
 
-	appRouter, err := router.NewRouter(routerConfig)
+	appRouter, err := router.NewRouter(routerConfig, c.Config)
 	if err != nil {
 		return fmt.Errorf("failed to initialize router: %w", err)
 	}
