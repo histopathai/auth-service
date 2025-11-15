@@ -106,6 +106,7 @@ func LoadConfig() *Config {
 		cfg.CORS = CORSConfig{
 			AllowedOrigins: []string{
 				getEnv("FRONTEND_URL", "https://histopathai.com"),
+				"https://localhost:5173",
 			},
 			AllowCredentials: true,
 		}
