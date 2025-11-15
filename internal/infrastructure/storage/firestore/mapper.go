@@ -27,7 +27,7 @@ func UserFromFirestoreDoc(doc *firestore.DocumentSnapshot) (*model.User, error) 
 	if err := doc.DataTo(&user); err != nil {
 		return nil, err
 	}
-
+	user.UserID = doc.Ref.ID
 	return &user, nil
 }
 
