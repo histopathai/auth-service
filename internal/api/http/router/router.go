@@ -126,7 +126,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 		// Session routes
 		sessions := v1.Group("/sessions")
 		{
-			sessions.POST("", r.sessionHandler.CreateSession)
+			sessions.PUT("", r.sessionHandler.CreateSession)
 
 			authenticated := sessions.Group("")
 			authenticated.Use(r.authMiddleware.RequireSession())
@@ -137,6 +137,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				authenticated.PUT("/revoke-all", r.sessionHandler.RevokeAllMySessions)
 				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
 				authenticated.PUT("/:session_id/extend", r.sessionHandler.ExtendSession)
+				authenticated.GET("/current", r.sessionHandler.GetCurrentSession)
 			}
 		}
 
@@ -156,6 +157,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				users.PUT("/:user_id/change-password", r.adminHandler.ChangePasswordForUser)
 				users.GET("/:user_id/sessions", r.sessionHandler.ListUserSessions)
 				users.DELETE("/:user_id/sessions", r.sessionHandler.RevokeAllUserSessions)
+
 			}
 
 			adminSessions := admin.Group("/sessions")
@@ -178,7 +180,8 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			"PUT /api/v1/auth/password (session required)",
 			"GET /api/v1/user/profile (auth or session)",
 			"DELETE /api/v1/user/account (auth or session)",
-			"POST /api/v1/sessions (token in body)",
+			"PUT /api/v1/sessions (token in body)",
+			"GET /api/v1/sessions/current (session required)",
 			"GET /api/v1/sessions (session required)",
 			"GET /api/v1/sessions/stats (session required)",
 			"PUT /api/v1/sessions/revoke-all (session required)",
