@@ -182,7 +182,7 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	}
 
 	response := dtoResponse.ProfileResponse{
-		UserResponse: mapToUserResponse(user),
+		User: mapToUserResponse(user),
 	}
 
 	h.response.Success(c, http.StatusOK, response)

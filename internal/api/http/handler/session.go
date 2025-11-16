@@ -93,11 +93,11 @@ func NewSessionHandler(
 // @Accept json
 // @Produce json
 // @Param payload body request.CreateSessionRequest true "Authentication token"
-// @Success 201 {object} response.CreateSessionResponse "Session created successfully"
+// @Success 204 "Session created successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid request"
 // @Failure 401 {object} response.ErrorResponse "Invalid token"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /sessions [post]
+// @Router /sessions [put]
 func (h *SessionHandler) CreateSession(c *gin.Context) {
 	var req dtoRequest.CreateSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -143,13 +143,40 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 	// Set cookie with environment-aware configuration
 	h.setSessionCookie(c, sessionID, session.ExpiresAt)
 
+	h.response.NoContent(c)
+}
+
+// GetCurrentSession
+// @Summary Get Current Session
+// @Description Get details of the current session
+// @Tags Session
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} response.SessionResponse "Current session retrieved successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /sessions/current [get]
+func (h *SessionHandler) GetCurrentSession(c *gin.Context) {
+	sessionID, err := c.Cookie("session_id")
+	if err != nil {
+		h.handleError(c, errors.NewUnauthorizedError("No active session"))
+		return
+	}
+
+	session, err := h.sessionService.ValidateSession(c.Request.Context(), sessionID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
 	response := dtoResponse.CreateSessionResponse{
 		ExpiresAt: session.ExpiresAt,
-		Message:   "Session created successfully",
+		Message:   "Current session retrieved successfully",
 		Session:   mapToSessionResponse(session),
 	}
 
-	h.response.Success(c, http.StatusCreated, response)
+	h.response.Success(c, http.StatusOK, response)
 }
 
 // ListMySessions
@@ -263,12 +290,12 @@ func (h *SessionHandler) GetMySessionStats(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param session_id path string true "Session ID"
-// @Success 200 {object} response.ExtendSessionResponse "Session extended successfully"
+// @Success 204 "Session extended successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid session ID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 404 {object} response.ErrorResponse "Session not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /sessions/{session_id}/extend [post]
+// @Router /sessions/{session_id}/extend [put]
 func (h *SessionHandler) ExtendSession(c *gin.Context) {
 	sessionID := c.Param("session_id")
 	if sessionID == "" {
@@ -299,17 +326,7 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-
-	// Get updated session
-	updatedSession, _ := h.sessionService.ValidateSession(c.Request.Context(), sessionID)
-
-	response := dtoResponse.ExtendSessionResponse{
-		SessionID: sessionID,
-		ExpiresAt: updatedSession.ExpiresAt,
-		Message:   "Session extended successfully",
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
 
 // RevokeSession
@@ -319,7 +336,6 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param session_id path string true "Session ID"
 // @Success 200 {object} response.RevokeSessionResponse "Session revoked successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid session ID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
@@ -327,8 +343,8 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/{session_id} [delete]
 func (h *SessionHandler) RevokeSession(c *gin.Context) {
-	sessionID := c.Param("session_id")
-	if sessionID == "" {
+	sessionID, err := c.Cookie("session_id")
+	if err != nil || sessionID == "" {
 		h.handleError(c, errors.NewValidationError("Missing session ID", nil))
 		return
 	}
@@ -360,11 +376,7 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 		h.clearSessionCookie(c)
 	}
 
-	response := dtoResponse.RevokeSessionResponse{
-		Message: "Session revoked successfully",
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
 
 // RevokeAllMySessions
@@ -374,10 +386,10 @@ func (h *SessionHandler) RevokeSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Success 200 {object} response.RevokeAllSessionsResponse "All sessions revoked successfully"
+// @Success 204 "All sessions revoked successfully"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /sessions/revoke-all [post]
+// @Router /sessions/revoke-all [put]
 func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -386,7 +398,11 @@ func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 	}
 
 	// Get session count before revoking
-	count, _ := h.sessionService.GetActiveSessionCount(c.Request.Context(), userID.(string))
+	_, err := h.sessionService.GetActiveSessionCount(c.Request.Context(), userID.(string))
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
 	// Revoke all sessions
 	if err := h.sessionService.RevokeAllUserSessions(c.Request.Context(), userID.(string)); err != nil {
@@ -394,12 +410,7 @@ func (h *SessionHandler) RevokeAllMySessions(c *gin.Context) {
 		return
 	}
 
-	response := dtoResponse.RevokeAllSessionsResponse{
-		Message:         "All sessions revoked successfully",
-		RevokedSessions: count,
-	}
-
-	h.response.Success(c, http.StatusOK, response)
+	h.response.NoContent(c)
 }
 
 // Admin Endpoints

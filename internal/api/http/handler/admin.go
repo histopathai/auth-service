@@ -95,7 +95,7 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 		},
 	}
 
-	h.response.Success(c, http.StatusOK, response)
+	h.response.SuccessList(c, response.Data, &response.Pagination)
 }
 
 // GetUser
@@ -141,7 +141,7 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param user_id path string true "User UserID"
-// @Success 200 {object} response.UserActionResponse "User approved successfully"
+// @Success 200 {object} response.UserDetailResponse "User approved successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid UserID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
@@ -160,12 +160,14 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
-
-	response := dtoResponse.UserActionResponse{
-		Message: "User approved successfully",
-		User:    mapToUserResponse(user),
+	response := dtoResponse.UserDetailResponse{
+		UserResponse: mapToUserResponse(user),
 	}
 
 	h.response.Success(c, http.StatusOK, response)
@@ -186,7 +188,7 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/change-password [post]
+// @Router /admin/users/{user_id}/change-password [put]
 func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
@@ -236,9 +238,11 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-
-	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User suspended successfully",
@@ -246,6 +250,7 @@ func (h *AdminHandler) SuspendUser(c *gin.Context) {
 	}
 
 	h.response.Success(c, http.StatusOK, response)
+
 }
 
 // MakeAdmin
@@ -275,9 +280,11 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 		h.handleError(c, err)
 		return
 	}
-
-	// Updated user'ı getir
-	user, _ := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User granted admin role successfully",

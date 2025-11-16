@@ -126,7 +126,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 		// Session routes
 		sessions := v1.Group("/sessions")
 		{
-			sessions.POST("", r.sessionHandler.CreateSession)
+			sessions.PUT("", r.sessionHandler.CreateSession)
 
 			authenticated := sessions.Group("")
 			authenticated.Use(r.authMiddleware.RequireSession())
@@ -134,15 +134,18 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			{
 				authenticated.GET("", r.sessionHandler.ListMySessions)
 				authenticated.GET("/stats", r.sessionHandler.GetMySessionStats)
-				authenticated.POST("/revoke-all", r.sessionHandler.RevokeAllMySessions)
+				authenticated.PUT("/revoke-all", r.sessionHandler.RevokeAllMySessions)
+				authenticated.PUT("/:session_id/extend", r.sessionHandler.ExtendSession)
+				authenticated.GET("/current", r.sessionHandler.GetCurrentSession)
+				authenticated.DELETE("/current", r.sessionHandler.RevokeSession)
 				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
-				authenticated.POST("/:session_id/extend", r.sessionHandler.ExtendSession)
+
 			}
 		}
 
 		// Admin routes (admin only)
 		admin := v1.Group("/admin")
-		admin.Use(r.authMiddleware.RequireAuth())
+		admin.Use(r.authMiddleware.RequireAuthOrSession())
 		admin.Use(r.authMiddleware.RequireRole(model.RoleAdmin))
 		admin.Use(r.authMiddleware.RequireStatus(model.StatusActive))
 		{
@@ -153,9 +156,10 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				users.POST("/:user_id/approve", r.adminHandler.ApproveUser)
 				users.POST("/:user_id/suspend", r.adminHandler.SuspendUser)
 				users.POST("/:user_id/make-admin", r.adminHandler.MakeAdmin)
-				users.POST("/:user_id/change-password", r.adminHandler.ChangePasswordForUser)
+				users.PUT("/:user_id/change-password", r.adminHandler.ChangePasswordForUser)
 				users.GET("/:user_id/sessions", r.sessionHandler.ListUserSessions)
 				users.DELETE("/:user_id/sessions", r.sessionHandler.RevokeAllUserSessions)
+
 			}
 
 			adminSessions := admin.Group("/sessions")
@@ -178,21 +182,22 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			"PUT /api/v1/auth/password (session required)",
 			"GET /api/v1/user/profile (auth or session)",
 			"DELETE /api/v1/user/account (auth or session)",
-			"POST /api/v1/sessions (token in body)",
+			"PUT /api/v1/sessions (token in body)",
+			"GET /api/v1/sessions/current (session required)",
 			"GET /api/v1/sessions (session required)",
 			"GET /api/v1/sessions/stats (session required)",
-			"POST /api/v1/sessions/revoke-all (session required)",
+			"PUT /api/v1/sessions/revoke-all (session required)",
 			"DELETE /api/v1/sessions/:session_id (session required)",
-			"POST /api/v1/sessions/:session_id/extend (session required)",
-			"GET /api/v1/admin/users (admin + bearer)",
-			"GET /api/v1/admin/users/:user_id (admin + bearer)",
-			"POST /api/v1/admin/users/:user_id/approve (admin + bearer)",
-			"POST /api/v1/admin/users/:user_id/suspend (admin + bearer)",
-			"POST /api/v1/admin/users/:user_id/make-admin (admin + bearer)",
-			"POST /api/v1/admin/users/:user_id/change-password (admin + bearer)",
-			"GET /api/v1/admin/users/:user_id/sessions (admin + bearer)",
-			"DELETE /api/v1/admin/users/:user_id/sessions (admin + bearer)",
-			"DELETE /api/v1/admin/sessions/:session_id (admin + bearer)",
+			"PUT /api/v1/sessions/:session_id/extend (session required)",
+			"GET /api/v1/admin/users (admin + session or bearer)",
+			"GET /api/v1/admin/users/:user_id (admin + session or bearer)",
+			"POST /api/v1/admin/users/:user_id/approve (admin + session or bearer)",
+			"POST /api/v1/admin/users/:user_id/suspend (admin + session or bearer)",
+			"POST /api/v1/admin/users/:user_id/make-admin (admin + session or bearer)",
+			"PUT /api/v1/admin/users/:user_id/change-password (admin + session or bearer)",
+			"GET /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
+			"DELETE /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
+			"DELETE /api/v1/admin/sessions/:session_id (admin + session or bearer)",
 			"ANY /api/v1/proxy/*proxyPath (auth or session)",
 			"GET /api/v1/health (public)",
 			"GET /api/v1/health/ready (public)",

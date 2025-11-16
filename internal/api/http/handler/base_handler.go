@@ -13,9 +13,7 @@ import (
 type ResponseHelper struct{}
 
 func (rh *ResponseHelper) Success(c *gin.Context, statusCode int, data interface{}) {
-	c.JSON(statusCode, gin.H{
-		"data": data,
-	})
+	c.JSON(statusCode, data)
 }
 
 func (rh *ResponseHelper) Error(c *gin.Context, statusCode int, errType string, message string, details map[string]interface{}) {
