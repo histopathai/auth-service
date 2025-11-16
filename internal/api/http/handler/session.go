@@ -146,6 +146,39 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 	h.response.NoContent(c)
 }
 
+// GetCurrentSession
+// @Summary Get Current Session
+// @Description Get details of the current session
+// @Tags Session
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Success 200 {object} response.SessionResponse "Current session retrieved successfully"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /sessions/current [get]
+func (h *SessionHandler) GetCurrentSession(c *gin.Context) {
+	sessionID, err := c.Cookie("session_id")
+	if err != nil {
+		h.handleError(c, errors.NewUnauthorizedError("No active session"))
+		return
+	}
+
+	session, err := h.sessionService.ValidateSession(c.Request.Context(), sessionID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response := dtoResponse.CreateSessionResponse{
+		ExpiresAt: session.ExpiresAt,
+		Message:   "Current session retrieved successfully",
+		Session:   mapToSessionResponse(session),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
 // ListMySessions
 // @Summary List My Sessions
 // @Description Get list of authenticated user's active sessions
