@@ -336,7 +336,6 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param session_id path string true "Session ID"
 // @Success 200 {object} response.RevokeSessionResponse "Session revoked successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid session ID"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
@@ -344,8 +343,8 @@ func (h *SessionHandler) ExtendSession(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/{session_id} [delete]
 func (h *SessionHandler) RevokeSession(c *gin.Context) {
-	sessionID := c.Param("session_id")
-	if sessionID == "" {
+	sessionID, err := c.Cookie("session_id")
+	if err != nil || sessionID == "" {
 		h.handleError(c, errors.NewValidationError("Missing session ID", nil))
 		return
 	}

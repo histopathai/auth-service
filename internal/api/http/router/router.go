@@ -135,9 +135,11 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				authenticated.GET("", r.sessionHandler.ListMySessions)
 				authenticated.GET("/stats", r.sessionHandler.GetMySessionStats)
 				authenticated.PUT("/revoke-all", r.sessionHandler.RevokeAllMySessions)
-				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
 				authenticated.PUT("/:session_id/extend", r.sessionHandler.ExtendSession)
 				authenticated.GET("/current", r.sessionHandler.GetCurrentSession)
+				authenticated.DELETE("/current", r.sessionHandler.RevokeSession)
+				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
+
 			}
 		}
 
