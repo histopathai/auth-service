@@ -14,5 +14,5 @@ type VerifyTokenResponse struct {
 
 // ProfileResponse represents user profile response (same as UserResponse but can be extended)
 type ProfileResponse struct {
-	UserResponse
+	User UserResponse `json:"user"`
 }
