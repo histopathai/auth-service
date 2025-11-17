@@ -45,6 +45,27 @@ func (fur *FirestoreUserRepositoryImpl) GetByUserID(ctx context.Context, userID 
 	return user, nil
 }
 
+func (fur *FirestoreUserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	query := fur.client.Collection(fur.collection).Where("email", "==", email).Limit(1)
+	iter := query.Documents(ctx)
+	defer iter.Stop()
+
+	doc, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done {
+			return nil, nil
+		}
+		return nil, MapFirestoreError(err)
+	}
+
+	user, err := UserFromFirestoreDoc(doc)
+	if err != nil {
+		return nil, MapFirestoreError(err)
+	}
+	user.UserID = doc.Ref.ID
+	return user, nil
+}
+
 func (fur *FirestoreUserRepositoryImpl) Update(ctx context.Context, userID string, updates *model.UpdateUser) error {
 	updateData := UpdateUserToFirestoreUpdates(updates)
 
