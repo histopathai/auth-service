@@ -1,8 +1,8 @@
 package model
 
-type RegisterUser struct {
+type ConfirmRegisterUser struct {
 	Email       string
-	Password    string
+	Token       string
 	DisplayName string
 }
 

@@ -1,9 +1,9 @@
 package request
 
-// RegisterRequest represents user registration request
-type RegisterRequest struct {
+// ConfirmRegisterRequest represents user registration confirmation request
+type ConfirmRegisterRequest struct {
 	Email       string `json:"email" binding:"required,email" example:"user@example.com"`
-	Password    string `json:"password" binding:"required,min=8" example:"StrongP@ss123"`
+	Token       string `json:"token" binding:"required" example:"confirmation_token"`
 	DisplayName string `json:"display_name" binding:"required,min=2,max=100" example:"John Doe"`
 }
 
