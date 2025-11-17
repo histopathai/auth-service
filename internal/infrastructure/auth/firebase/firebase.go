@@ -17,30 +17,7 @@ func NewFirebaseAuthRepository(client *auth.Client) *FirebaseAuthRepositoryImpl 
 	}
 }
 
-func (far *FirebaseAuthRepositoryImpl) Register(ctx context.Context, payload *model.RegisterUser) (*model.UserAuthInfo, error) {
-	params := (&auth.UserToCreate{}).
-		Email(payload.Email).
-		Password(payload.Password).
-		DisplayName(payload.DisplayName).
-		EmailVerified(false).
-		Disabled(false)
-
-	u, err := far.client.CreateUser(ctx, params)
-	if err != nil {
-		return nil, MapFirebaseAuthError(err)
-	}
-
-	UserAuthInfo := &model.UserAuthInfo{
-		UserID:        u.UID,
-		Email:         u.Email,
-		EmailVerified: u.EmailVerified,
-		DisplayName:   u.DisplayName,
-	}
-	return UserAuthInfo, nil
-}
-
 func (far *FirebaseAuthRepositoryImpl) VerifyIDToken(ctx context.Context, idToken string) (*model.UserAuthInfo, error) {
-
 	token, err := far.client.VerifyIDToken(ctx, idToken)
 	if err != nil {
 		return nil, MapFirebaseAuthError(err)
@@ -48,9 +25,9 @@ func (far *FirebaseAuthRepositoryImpl) VerifyIDToken(ctx context.Context, idToke
 
 	authUser := &model.UserAuthInfo{
 		UserID:        token.UID,
-		Email:         token.Claims["email"].(string),
-		EmailVerified: token.Claims["email_verified"].(bool),
-		DisplayName:   token.Claims["name"].(string),
+		Email:         getStringClaim(token.Claims, "email"),
+		EmailVerified: getBoolClaim(token.Claims, "email_verified"),
+		DisplayName:   getStringClaim(token.Claims, "name"), // ✅ Güvenli
 	}
 
 	return authUser, nil
@@ -91,4 +68,22 @@ func (far *FirebaseAuthRepositoryImpl) GetAuthInfo(ctx context.Context, userID s
 	}
 
 	return authUser, nil
+}
+
+func getStringClaim(claims map[string]interface{}, key string) string {
+	if val, ok := claims[key]; ok && val != nil {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}
+
+func getBoolClaim(claims map[string]interface{}, key string) bool {
+	if val, ok := claims[key]; ok && val != nil {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return false
 }
