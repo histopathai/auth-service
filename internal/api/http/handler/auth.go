@@ -37,23 +37,23 @@ func NewAuthHandler(authService service.AuthService, logger *slog.Logger) *AuthH
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req dtoRequest.RegisterRequest
+	var req dtoRequest.ConfirmRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
 		return
 	}
 
-	user, err := h.authService.RegisterUser(c.Request.Context(), &model.RegisterUser{
+	user, err := h.authService.RegisterUser(c.Request.Context(), &model.ConfirmRegisterUser{
 		Email:       req.Email,
-		Password:    req.Password,
 		DisplayName: req.DisplayName,
+		Token:       req.Token,
 	})
 	if err != nil {
 		h.handleError(c, err)
 		return
 	}
 
-	response := dtoResponse.RegisterResponse{
+	response := dtoResponse.ConfirmRegisterResponse{
 		User:    mapToUserResponse(user),
 		Message: "User registered successfully",
 	}
