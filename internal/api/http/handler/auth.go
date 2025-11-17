@@ -30,8 +30,8 @@ func NewAuthHandler(authService service.AuthService, logger *slog.Logger) *AuthH
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param payload body request.RegisterRequest true "Registration details"
-// @Success 201 {object} response.RegisterResponse "User registered successfully"
+// @Param payload body request.ConfirmRegisterRequest true "Registration details"
+// @Success 201 {object} response.ConfirmRegisterResponse "User registered successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid request"
 // @Failure 409 {object} response.ErrorResponse "Email already exists"
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
