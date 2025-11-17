@@ -23,12 +23,27 @@ func NewAuthService(authrepo repository.AuthRepository, userRepo repository.User
 	}
 }
 
-func (s *AuthService) RegisterUser(ctx context.Context, register *model.RegisterUser) (*model.User, error) {
+func (s *AuthService) RegisterUser(ctx context.Context, register *model.ConfirmRegisterUser) (*model.User, error) {
 
-	// 1. Creata Firebase user
-	authInfo, err := s.authRepo.Register(ctx, register)
+	// 1. Verify Firebase Auth
+	authInfo, err := s.authRepo.VerifyIDToken(ctx, register.Token)
 	if err != nil {
 		return nil, err
+	}
+
+	if authInfo.Email != register.Email {
+		return nil, errors.NewUnauthorizedError("email in token does not match registration email")
+	}
+
+	existingUser, err := s.userRepo.GetByEmail(ctx, register.Email)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to check existing user by email", err)
+	}
+	if existingUser != nil {
+		detail := map[string]interface{}{
+			"email": register.Email,
+		}
+		return nil, errors.NewConflictError("user with this email already exists", detail)
 	}
 
 	// 2. Create user record in the database (initially pending)
