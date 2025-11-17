@@ -1,7 +1,7 @@
 package response
 
-// RegisterResponse represents user registration response
-type RegisterResponse struct {
+// ConfirmRegisterResponse represents user registration confirmation response
+type ConfirmRegisterResponse struct {
 	User    UserResponse `json:"user"`
 	Message string       `json:"message" example:"Registration successful. Please wait for admin approval."`
 }
