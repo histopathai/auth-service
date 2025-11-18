@@ -156,7 +156,6 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				users.POST("/:user_id/approve", r.adminHandler.ApproveUser)
 				users.POST("/:user_id/suspend", r.adminHandler.SuspendUser)
 				users.POST("/:user_id/make-admin", r.adminHandler.MakeAdmin)
-				users.PUT("/:user_id/change-password", r.adminHandler.ChangePasswordForUser)
 				users.GET("/:user_id/sessions", r.sessionHandler.ListUserSessions)
 				users.DELETE("/:user_id/sessions", r.sessionHandler.RevokeAllUserSessions)
 
@@ -194,7 +193,6 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			"POST /api/v1/admin/users/:user_id/approve (admin + session or bearer)",
 			"POST /api/v1/admin/users/:user_id/suspend (admin + session or bearer)",
 			"POST /api/v1/admin/users/:user_id/make-admin (admin + session or bearer)",
-			"PUT /api/v1/admin/users/:user_id/change-password (admin + session or bearer)",
 			"GET /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
 			"DELETE /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
 			"DELETE /api/v1/admin/sessions/:session_id (admin + session or bearer)",
