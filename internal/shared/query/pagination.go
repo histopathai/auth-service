@@ -3,6 +3,6 @@ package query
 type Pagination struct {
 	Limit     int
 	Offset    int
-	SortBy    string
-	SortOrder string
+	SortBy    *string
+	SortOrder *string
 }
