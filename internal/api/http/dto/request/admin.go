@@ -3,9 +3,6 @@ package request
 // ListUsersRequest represents query parameters for listing users
 type ListUsersRequest struct {
 	PaginationRequest
-	Status string `form:"status" binding:"omitempty,oneof=pending active suspended" example:"active"`
-	Role   string `form:"role" binding:"omitempty,oneof=user admin" example:"user"`
-	Search string `form:"search" binding:"omitempty,max=100" example:"john"`
 }
 
 // Default sort field for users
