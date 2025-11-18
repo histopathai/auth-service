@@ -17,6 +17,8 @@ import (
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/pkg/config"
+	"golang.org/x/oauth2"
+	"google.golang.org/api/idtoken"
 )
 
 type MainServiceProxy struct {
@@ -26,6 +28,7 @@ type MainServiceProxy struct {
 	sessionService *service.SessionService
 	logger         *slog.Logger
 	config         *config.Config
+	tokenSource    oauth2.TokenSource
 }
 
 func NewMainServiceProxy(
@@ -45,12 +48,18 @@ func NewMainServiceProxy(
 		target, _ = url.Parse(targetBaseURL)
 	}
 
+	ts, err := idtoken.NewTokenSource(context.Background(), targetBaseURL)
+	if err != nil {
+		// Local development'ta hata vermemesi için loglayıp geçebilirsiniz veya mocklayabilirsiniz
+		logger.Warn("Failed to create ID token source (ignore if local)", "error", err)
+	}
 	msp := &MainServiceProxy{
 		targetURL:      target,
 		authService:    authService,
 		sessionService: sessionService,
 		config:         config,
 		logger:         logger,
+		tokenSource:    ts,
 	}
 
 	msp.proxy = &httputil.ReverseProxy{
@@ -86,6 +95,15 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 	req.URL.Host = msp.targetURL.Host
 	req.URL.Path = newPath
 	req.Host = msp.targetURL.Host
+
+	if msp.tokenSource != nil {
+		token, err := msp.tokenSource.Token()
+		if err == nil {
+			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		} else {
+			msp.logger.Error("Failed to refresh ID token", "error", err)
+		}
+	}
 
 	// Move Session Token to Header
 	if sessionID := req.URL.Query().Get("session"); sessionID != "" {
