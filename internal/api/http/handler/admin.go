@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
 	dtoResponse "github.com/histopathai/auth-service/internal/api/http/dto/response"
 	"github.com/histopathai/auth-service/internal/service"
@@ -46,27 +47,18 @@ func NewAdminHandler(authService service.AuthService, logger *slog.Logger) *Admi
 // @Router /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	var req dtoRequest.ListUsersRequest
+
 	if err := c.ShouldBindQuery(&req); err != nil {
-		h.handleError(c, errors.NewValidationError("Invalid query parameters", nil))
-		return
-	}
-
-	req.ApplyDefaults()
-
-	allowedFields := req.GetAllowedSortFields()
-	isValid := false
-	for _, field := range allowedFields {
-		if field == req.SortBy {
-			isValid = true
-			break
+		details := make(map[string]interface{})
+		if _, ok := err.(validator.ValidationErrors); ok {
+			details["errors"] = err.Error()
+			h.handleError(c, errors.NewValidationError("Invalid query parameters", details))
+			return
 		}
-	}
-	if !isValid {
-		h.handleError(c, errors.NewValidationError("Invalid sort field", map[string]interface{}{
-			"sort_by": "must be one of: created_at, updated_at, email, display_name",
-		}))
+		h.handleError(c, errors.NewValidationError("Invalid query parameters", details))
 		return
 	}
+	req.ApplyDefaults()
 
 	pagination := &query.Pagination{
 		Limit:     req.Limit,
@@ -173,44 +165,6 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 	h.response.Success(c, http.StatusOK, response)
 }
 
-// ChangePasswordForUser
-// @Summary Change User Password (Admin)
-// @Description Admin changes specific user's password
-// @Tags Admin
-// @Accept json
-// @Produce json
-// @Security ApiKeyAuth
-// @Param user_id path string true "User UserID"
-// @Param payload body request.ChangeUserPasswordRequest true "New password"
-// @Success 204 "Password changed successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid request"
-// @Failure 401 {object} response.ErrorResponse "Unauthorized"
-// @Failure 403 {object} response.ErrorResponse "Forbidden"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
-// @Router /admin/users/{user_id}/change-password [put]
-func (h *AdminHandler) ChangePasswordForUser(c *gin.Context) {
-	userID := c.Param("user_id")
-	if userID == "" {
-		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
-		return
-	}
-
-	var req dtoRequest.ChangeUserPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, errors.NewValidationError("Invalid request payload", nil))
-		return
-	}
-
-	err := h.authService.ChangeUserPassword(c.Request.Context(), userID, req.NewPassword)
-	if err != nil {
-		h.handleError(c, err)
-		return
-	}
-
-	h.response.NoContent(c)
-}
-
 // SuspendUser
 // @Summary Suspend User
 // @Description Suspend an active user account (Admin only)
@@ -289,6 +243,41 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 	response := dtoResponse.UserActionResponse{
 		Message: "User granted admin role successfully",
 		User:    mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
+// DeleteUser
+// @Summary Delete User
+// @Description Delete a user account (Admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Success 200 {object} response.UserActionResponse "User deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/delete [put]
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
+		return
+	}
+
+	err := h.authService.DeleteUser(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response := dtoResponse.UserActionResponse{
+		Message: "User deleted successfully",
 	}
 
 	h.response.Success(c, http.StatusOK, response)

@@ -272,14 +272,6 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 				)
 			}
 		}()
-
-		msp.logger.Info("Proxying authenticated request",
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
-			"user_id", user.UserID,
-			"role", user.Role,
-		)
-
 		// Proxy the request
 		msp.proxy.ServeHTTP(c.Writer, c.Request)
 	}
