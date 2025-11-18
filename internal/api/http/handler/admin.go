@@ -247,3 +247,38 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 
 	h.response.Success(c, http.StatusOK, response)
 }
+
+// DeleteUser
+// @Summary Delete User
+// @Description Delete a user account (Admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Success 200 {object} response.UserActionResponse "User deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/delete [put]
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
+		return
+	}
+
+	err := h.authService.DeleteUser(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response := dtoResponse.UserActionResponse{
+		Message: "User deleted successfully",
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
