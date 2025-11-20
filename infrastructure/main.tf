@@ -18,8 +18,6 @@ data "terraform_remote_state" "platform" {
   backend = "gcs"
   
   config = {
-    bucket = "tf-state-histopathai-platform"
-    # Use environment-specific platform state
     prefix = "platform/prod"
   }
 }
