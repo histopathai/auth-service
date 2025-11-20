@@ -57,6 +57,8 @@ jobs:
       ENVIRONMENT: ${{ needs.setup.outputs.environment }}
       WIF_PROVIDER: ${{ secrets.WIF_PROVIDER}}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT}}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -148,6 +150,7 @@ jobs:
     env:
       WIF_PROVIDER: ${{secrets.WIF_PROVIDER}}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
       TF_VARS_JSON: ${{ (needs.setup.outputs.environment == 'prod') && secrets.TF_VAR_PROD || secrets.TF_VAR_DEV }}
       ARTIFACT_REGISTRY_REPO_NAME: ${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}
       GCP_REGION: ${{ secrets.GCP_REGION }}
@@ -235,7 +238,7 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🔧 Initializing Terraform for ${{ needs.setup.outputs.environment }}..."
-          terraform init
+          terraform init -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
       - name: Terraform Plan
         run: |
           echo "📊 Running Terraform plan..."
