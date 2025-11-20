@@ -18,7 +18,8 @@ data "terraform_remote_state" "platform" {
   backend = "gcs"
   
   config = {
-    prefix = "platform/prod"
+    bucket = var.tf_state_bucket 
+    prefix = "platform/prod"      
   }
 }
 

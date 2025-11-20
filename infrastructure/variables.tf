@@ -122,3 +122,8 @@ variable "image_tag" {
   default     = "latest"
 }
 
+
+variable "tf_state_bucket" {
+  description = "GCS bucket name for terraform state"
+  type        = string
+}
