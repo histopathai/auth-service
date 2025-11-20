@@ -55,8 +55,8 @@ jobs:
     needs: setup
     env:
       ENVIRONMENT: ${{ needs.setup.outputs.environment }}
-      WIF_PROVIDER: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_PROVIDER_PROD || secrets.WIF_PROVIDER_DEV }}
-      WIF_SERVICE_ACCOUNT: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_SERVICE_ACCOUNT_PROD || secrets.WIF_SERVICE_ACCOUNT_DEV }}
+      WIF_PROVIDER: ${{ secrets.WIF_PROVIDER}}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT}}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -146,8 +146,8 @@ jobs:
       name: ${{ needs.setup.outputs.environment }}
     
     env:
-      WIF_PROVIDER: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_PROVIDER_PROD || secrets.WIF_PROVIDER_DEV }}
-      WIF_SERVICE_ACCOUNT: ${{ (needs.setup.outputs.environment == 'prod') && secrets.WIF_SERVICE_ACCOUNT_PROD || secrets.WIF_SERVICE_ACCOUNT_DEV }}
+      WIF_PROVIDER: ${{secrets.WIF_PROVIDER}}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       TF_VARS_JSON: ${{ (needs.setup.outputs.environment == 'prod') && secrets.TF_VAR_PROD || secrets.TF_VAR_DEV }}
       ARTIFACT_REGISTRY_REPO_NAME: ${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}
       GCP_REGION: ${{ secrets.GCP_REGION }}
