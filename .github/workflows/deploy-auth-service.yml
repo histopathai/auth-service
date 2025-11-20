@@ -249,6 +249,7 @@ jobs:
           terraform plan \
             -var="image_tag=${IMAGE_TAG}" \
             -var="environment=${{ needs.setup.outputs.environment }}" \
+            -var="tf_state_bucket=${{ env.TF_STATE_BUCKET }}" \
             -out=tfplan
 
       - name: Terraform Apply
