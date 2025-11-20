@@ -9,7 +9,6 @@ terraform {
   }
   
   backend "gcs" {
-    bucket = "tf-state-histopathai-platform"
     prefix = "services/auth-service"
   }
 }
