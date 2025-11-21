@@ -24,15 +24,16 @@ data "terraform_remote_state" "platform" {
 }
 
 locals {
-    project_id = data.terraform_remote_state.platform.outputs.project_id
-    project_number = data.terraform_remote_state.platform.outputs.project_number
-    region     = data.terraform_remote_state.platform.outputs.region
-    service_account = data.terraform_remote_state.platform.outputs.auth_service_account_email
-    artifact_repository_id = data.terraform_remote_state.platform.outputs.artifact_repository_id
+    project_id      = data.terraform_remote_state.platform.outputs.project_id
+    project_number  = data.terraform_remote_state.platform.outputs.project_number
+    region          = data.terraform_remote_state.platform.outputs.region
     
-    # Separate service names per environment
-    service_name = var.environment == "prod" ? "auth-service" : "auth-service-${var.environment}"
-    image_name = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/${local.service_name}:${var.image_tag}"
+    
+    
+    service_account         = data.terraform_remote_state.platform.outputs.auth_service_account_email
+    artifact_repository_id  = data.terraform_remote_state.platform.outputs.artifact_repository_id
+    service_name            = var.environment == "prod" ? "auth-service" : "auth-service-${var.environment}"
+    image_name              = "${local.region}-docker.pkg.dev/${local.project_id}/${local.artifact_repository_id}/${local.service_name}:${var.image_tag}"
     
     # Main service URL
     main_service_name = "main-service"

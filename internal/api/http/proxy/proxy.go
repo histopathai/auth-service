@@ -288,6 +288,8 @@ func (msp *MainServiceProxy) authenticateRequest(c *gin.Context) (*model.User, e
 		if err == nil && session != nil {
 			user, err := msp.authService.GetUserByUserID(c.Request.Context(), session.UserID)
 			if err == nil {
+
+				msp.updateSessionCookie(c, session)
 				msp.logger.Debug("Session cookie authentication successful",
 					"user_id", user.UserID,
 				)
@@ -344,4 +346,30 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func (msp *MainServiceProxy) updateSessionCookie(c *gin.Context, session *model.Session) {
+	cookieCfg := msp.config.Cookie
+	maxAge := int(time.Until(session.ExpiresAt).Seconds())
+
+	var sameSite http.SameSite
+	switch cookieCfg.SameSite {
+	case "Strict":
+		sameSite = http.SameSiteStrictMode
+	case "None":
+		sameSite = http.SameSiteNoneMode
+	default:
+		sameSite = http.SameSiteLaxMode
+	}
+
+	c.SetSameSite(sameSite)
+	c.SetCookie(
+		cookieCfg.Name,
+		session.SessionID,
+		maxAge,
+		"/",
+		cookieCfg.Domain,
+		cookieCfg.Secure,
+		cookieCfg.HTTPOnly,
+	)
 }
