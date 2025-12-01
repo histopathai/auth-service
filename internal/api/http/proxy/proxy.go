@@ -90,7 +90,17 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		trimmed = "/"
 	}
 
-	newPath := "/api/v1/proxy" + trimmed
+	var newPath string
+
+	if isGCSProxyPath(trimmed) {
+
+		newPath = "/api/v1/proxy" + trimmed
+		msp.logger.Debug("GCS proxy path detected", "trimmed", trimmed)
+	} else {
+		// Normal API endpoint, remove proxy prefix
+		newPath = "/api/v1" + trimmed
+		msp.logger.Debug("Normal API path detected", "trimmed", trimmed)
+	}
 
 	msp.logger.Debug("Path transformation",
 		"original", originalPath,
@@ -128,6 +138,22 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		"user_id", req.Header.Get("X-User-ID"),
 		"user_role", req.Header.Get("X-User-Role"),
 	)
+}
+
+func isGCSProxyPath(path string) bool {
+	parts := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	if len(parts) == 0 {
+		return false
+	}
+
+	firstSegment := parts[0]
+	if len(firstSegment) >= 32 && strings.Contains(firstSegment, "-") {
+
+		dashCount := strings.Count(firstSegment, "-")
+		return dashCount == 4
+	}
+
+	return false
 }
 
 func (msp *MainServiceProxy) modifyResponse(resp *http.Response) error {
