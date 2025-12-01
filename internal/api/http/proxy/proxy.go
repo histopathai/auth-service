@@ -90,7 +90,14 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		trimmed = "/"
 	}
 
-	newPath := "/api/v1" + trimmed
+	newPath := "/api/v1/proxy" + trimmed
+
+	msp.logger.Debug("Path transformation",
+		"original", originalPath,
+		"trimmed", trimmed,
+		"new_path", newPath,
+	)
+
 	req.URL.Scheme = msp.targetURL.Scheme
 	req.URL.Host = msp.targetURL.Host
 	req.URL.Path = newPath
@@ -101,15 +108,12 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		if err == nil {
 			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 		} else {
-			msp.logger.Error("Failed to refresh ID token", "error", err)
+			msp.logger.Debug("ID token not available (local dev)", "error", err)
 		}
 	}
 
-	// Move Session Token to Header
 	if sessionID := req.URL.Query().Get("session"); sessionID != "" {
 		req.Header.Set("X-Session-ID", sessionID)
-
-		// Remove session from query params
 		values := req.URL.Query()
 		values.Del("session")
 		req.URL.RawQuery = values.Encode()
@@ -119,17 +123,10 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		)
 	}
 
-	// Move user info to headers from context
-	if userID, ok := req.Context().Value("user_id").(string); ok {
-		req.Header.Set("X-User-ID", userID)
-	}
-
-	if role, ok := req.Context().Value("user_role").(string); ok {
-		req.Header.Set("X-User-Role", role)
-	}
-
 	msp.logger.Debug("Request proxied",
 		"target_url", fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.URL.Host, req.URL.Path),
+		"user_id", req.Header.Get("X-User-ID"),
+		"user_role", req.Header.Get("X-User-Role"),
 	)
 }
 
@@ -210,19 +207,50 @@ func (msp *MainServiceProxy) errorHandler(w http.ResponseWriter, r *http.Request
 func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
 	origin := c.Request.Header.Get("Origin")
 
-	if origin != msp.config.AllowedOrigin {
+	// **FIX: Origin kontrolünü daha esnek yap**
+	allowedOrigins := []string{
+		msp.config.AllowedOrigin,
+		"https://localhost:5173", // Explicit ekle
+		"http://localhost:5173",  // HTTP de kabul et
+	}
+
+	originAllowed := false
+	for _, allowed := range allowedOrigins {
+		if origin == allowed {
+			originAllowed = true
+			break
+		}
+	}
+
+	// Local development için daha esnek
+	if !originAllowed && msp.config.Server.Environment == "dev" {
+		// Development'ta localhost origin'leri kabul et
+		if strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") {
+			originAllowed = true
+		}
+	}
+
+	if !originAllowed && origin != "" {
+		msp.logger.Warn("CORS: Origin not allowed", "origin", origin, "allowed", msp.config.AllowedOrigin)
 		return
 	}
 
-	c.Writer.Header().Set("Access-Control-Allow-Origin", msp.config.AllowedOrigin)
+	// Origin'i olduğu gibi geri dön (veya allowed origin'i kullan)
+	allowOrigin := origin
+	if allowOrigin == "" {
+		allowOrigin = msp.config.AllowedOrigin
+	}
+
+	c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 	c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, Cookie")
 	c.Writer.Header().Set("Access-Control-Max-Age", "3600")
 	c.Writer.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
+
+	msp.logger.Debug("CORS headers set", "origin", allowOrigin)
 }
 
-// Handler returns the Gin handler function
 func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -256,10 +284,9 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 			return
 		}
 
-		// Add user info to context
-		ctx := context.WithValue(c.Request.Context(), "user_id", user.UserID)
-		ctx = context.WithValue(ctx, "user_role", string(user.Role))
-		c.Request = c.Request.WithContext(ctx)
+		// **FIX: Header'ları request'e ekle**
+		c.Request.Header.Set("X-User-ID", user.UserID)
+		c.Request.Header.Set("X-User-Role", string(user.Role))
 
 		// Log slow requests
 		defer func() {
@@ -272,6 +299,7 @@ func (msp *MainServiceProxy) Handler() gin.HandlerFunc {
 				)
 			}
 		}()
+
 		// Proxy the request
 		msp.proxy.ServeHTTP(c.Writer, c.Request)
 	}

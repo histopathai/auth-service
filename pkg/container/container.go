@@ -66,7 +66,12 @@ func New(ctx context.Context, cfg *config.Config, logger *logger.Logger) (*Conta
 
 func (c *Container) initInfrastructure(ctx context.Context) error {
 
-	fbApp, err := firebase.NewApp(ctx, nil)
+	fbConfig := &firebase.Config{
+		ProjectID: c.Config.ProjectID, // Config'den gelen proje ID'sini elle veriyoruz
+	}
+
+	// nil yerine fbConfig değişkenini kullanın
+	fbApp, err := firebase.NewApp(ctx, fbConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize Firebase app: %w", err)
 	}
@@ -78,7 +83,7 @@ func (c *Container) initInfrastructure(ctx context.Context) error {
 	}
 	c.AuthClient = authClient
 
-	firestoreClient, err := fbApp.Firestore(ctx)
+	firestoreClient, err := firestore.NewClient(ctx, c.Config.ProjectID)
 	if err != nil {
 		return fmt.Errorf("failed to initialize Firestore client: %w", err)
 	}
