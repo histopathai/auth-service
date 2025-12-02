@@ -50,7 +50,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, register *model.ConfirmR
 	user := &model.User{
 		UserID:      authInfo.UserID,
 		Email:       authInfo.Email,
-		DisplayName: authInfo.DisplayName,
+		DisplayName: register.DisplayName,
 		Status:      model.StatusPending,
 		Role:        model.RoleUnassigned,
 	}

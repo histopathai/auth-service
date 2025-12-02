@@ -24,8 +24,25 @@ func UserToFirestoreMap(user *model.User) map[string]interface{} {
 func UserFromFirestoreDoc(doc *firestore.DocumentSnapshot) (*model.User, error) {
 	var user model.User
 
-	if err := doc.DataTo(&user); err != nil {
-		return nil, err
+	for key, value := range doc.Data() {
+		switch key {
+		case "email":
+			user.Email = value.(string)
+		case "display_name":
+			user.DisplayName = value.(string)
+		case "created_at":
+			user.CreatedAt = value.(time.Time)
+		case "updated_at":
+			user.UpdatedAt = value.(time.Time)
+		case "status":
+			user.Status = model.UserStatus(value.(string))
+		case "role":
+			user.Role = model.UserRole(value.(string))
+		case "admin_approved":
+			user.AdminApproved = value.(bool)
+		case "approval_date":
+			user.ApprovalDate = value.(time.Time)
+		}
 	}
 	user.UserID = doc.Ref.ID
 	return &user, nil
