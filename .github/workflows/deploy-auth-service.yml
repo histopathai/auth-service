@@ -190,8 +190,9 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🔧 Initializing Terraform for ${{ needs.setup.outputs.environment }}..."
-          terraform init -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
-
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="prefix=services/auth-service/${{ needs.setup.outputs.environment }}"
       - name: Terraform Plan
         run: |
           echo "📊 Running Terraform plan..."

@@ -8,9 +8,6 @@ terraform {
     }
   }
   
-  backend "gcs" {
-    prefix = var.environment == "dev" ? "services/auth-service/dev" : "services/auth-service/prod"
-  }
 }
 
 # Platform-infra outputs'unu kullan
