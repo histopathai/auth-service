@@ -78,10 +78,10 @@ variable "cookie_domain" {
   default     = ""
 }
 
-variable "allowed_origin" {
-description = "Allowed CORS origin URL"
-type = string
-default = ""
+variable "allowed_origins" {
+  description = "Allowed CORS origin URLs"
+  type        = list(string)
+  default     = []
 }
 
 
