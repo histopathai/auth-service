@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 // LoggingConfig holds settings for the logger
@@ -47,7 +48,7 @@ type Config struct {
 	Region         string
 	ProjectNumber  string
 	MainServiceURL string
-	AllowedOrigin  string
+	AllowedOrigins []string
 	Server         ServerConfig
 	Cookie         CookieConfig
 	Security       SecurityConfig
@@ -57,13 +58,18 @@ type Config struct {
 
 func LoadConfig() *Config {
 	env := getEnv("ENVIRONMENT", "dev")
+	allowedOriginsEnv := getEnv("ALLOWED_ORIGINS", "http://localhost:5173,https://histopathai.com")
+	allowedOrigins := strings.Split(allowedOriginsEnv, ",")
+	for i := range allowedOrigins {
+		allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
+	}
 
 	cfg := &Config{
 		ProjectID:      getEnv("PROJECT_ID", ""),
 		Region:         getEnv("REGION", ""),
 		ProjectNumber:  getEnv("PROJECT_NUMBER", ""),
 		MainServiceURL: getEnv("MAIN_SERVICE_URL", "http://localhost:8081"),
-		AllowedOrigin:  getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
+		AllowedOrigins: allowedOrigins,
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8080"),
 			Environment:  env,

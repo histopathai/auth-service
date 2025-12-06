@@ -8,14 +8,21 @@ import (
 func CORSMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
+		allowed := false
 
-		// Sadece configured origin'i kabul et (dev'de extension bypass eder zaten)
-		if origin != cfg.AllowedOrigin {
+		for _, o := range cfg.AllowedOrigins {
+			if origin == o {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
 			c.Next()
 			return
 		}
 
-		c.Writer.Header().Set("Access-Control-Allow-Origin", cfg.AllowedOrigin)
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, Cookie")

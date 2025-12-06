@@ -233,12 +233,12 @@ func (msp *MainServiceProxy) errorHandler(w http.ResponseWriter, r *http.Request
 func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
 	origin := c.Request.Header.Get("Origin")
 
-	// **FIX: Origin kontrolünü daha esnek yap**
-	allowedOrigins := []string{
-		msp.config.AllowedOrigin,
+	allowedOrigins := make([]string, len(msp.config.AllowedOrigins))
+	copy(allowedOrigins, msp.config.AllowedOrigins)
+	allowedOrigins = append(allowedOrigins,
 		"https://localhost:5173", // Explicit ekle
 		"http://localhost:5173",  // HTTP de kabul et
-	}
+	)
 
 	originAllowed := false
 	for _, allowed := range allowedOrigins {
@@ -248,23 +248,20 @@ func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
 		}
 	}
 
-	// Local development için daha esnek
 	if !originAllowed && msp.config.Server.Environment == "dev" {
-		// Development'ta localhost origin'leri kabul et
 		if strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1") {
 			originAllowed = true
 		}
 	}
 
 	if !originAllowed && origin != "" {
-		msp.logger.Warn("CORS: Origin not allowed", "origin", origin, "allowed", msp.config.AllowedOrigin)
+		msp.logger.Warn("CORS: Origin not allowed", "origin", origin, "allowed", msp.config.AllowedOrigins)
 		return
 	}
 
-	// Origin'i olduğu gibi geri dön (veya allowed origin'i kullan)
 	allowOrigin := origin
-	if allowOrigin == "" {
-		allowOrigin = msp.config.AllowedOrigin
+	if allowOrigin == "" && len(msp.config.AllowedOrigins) > 0 {
+		allowOrigin = msp.config.AllowedOrigins[0]
 	}
 
 	c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
