@@ -9,7 +9,7 @@ terraform {
   }
   
   backend "gcs" {
-    prefix = "services/auth-service"
+    prefix = var.environment == "dev" ? "services/auth-service/dev" : "services/auth-service/prod"
   }
 }
 
