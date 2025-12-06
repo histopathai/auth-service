@@ -151,7 +151,7 @@ jobs:
       WIF_PROVIDER: ${{secrets.WIF_PROVIDER}}
       WIF_SERVICE_ACCOUNT: ${{ secrets.WIF_SERVICE_ACCOUNT }}
       TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-      TF_VARS_JSON: ${{ (needs.setup.outputs.environment == 'prod') && secrets.TF_VAR_PROD || secrets.TF_VAR_DEV }}
+
       ARTIFACT_REGISTRY_REPO_NAME: ${{ secrets.ARTIFACT_REGISTRY_REPO_NAME }}
       GCP_REGION: ${{ secrets.GCP_REGION }}
       
@@ -162,54 +162,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Create terraform.tfvars from JSON
-        run: |
-          echo "📝 Creating terraform.tfvars for ${{ needs.setup.outputs.environment }}..."
-          
-          if [ -z "${{ env.TF_VARS_JSON }}" ]; then
-            echo "❌ ERROR: TF_VARS_JSON is empty!"
-            exit 1
-          fi
-          
-          cat << 'EOF' > parse_json.py
-          import json
-          import sys
-          
-          try:
-              data = json.loads(sys.stdin.read())
-              
-              for key, value in data.items():
-                  if isinstance(value, str):
-                      print(f'{key} = "{value}"')
-                  elif isinstance(value, bool):
-                      print(f'{key} = {str(value).lower()}')
-                  elif isinstance(value, (int, float)):
-                      print(f'{key} = {value}')
-                  elif isinstance(value, list):
-                      items = ', '.join([f'"{v}"' for v in value])
-                      print(f'{key} = [{items}]')
-                  elif isinstance(value, dict):
-                      print(f'{key} = {{')
-                      for k, v in value.items():
-                          print(f'  {k} = "{v}"')
-                      print('}')
-          except json.JSONDecodeError as e:
-              print(f"ERROR: Invalid JSON format: {e}", file=sys.stderr)
-              sys.exit(1)
-          EOF
-          
-          echo '${{ env.TF_VARS_JSON }}' | python3 parse_json.py > terraform.tfvars
-          
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed to parse JSON"
-            exit 1
-          fi
-          
-          echo "✅ terraform.tfvars created"
-          echo ""
-          echo "📋 Configuration:"
-          cat terraform.tfvars
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -239,16 +191,17 @@ jobs:
         run: |
           echo "🔧 Initializing Terraform for ${{ needs.setup.outputs.environment }}..."
           terraform init -backend-config="bucket=${{ env.TF_STATE_BUCKET }}"
+
       - name: Terraform Plan
         run: |
           echo "📊 Running Terraform plan..."
-          
         
           IMAGE_TAG="${{ env.GCP_REGION }}-docker.pkg.dev/${{ needs.build-and-push.outputs.project_id }}/${{ env.ARTIFACT_REGISTRY_REPO_NAME }}/${{ env.REPO_NAME }}:${{ github.sha }}"
           
+          # -var-file kullanılarak ortam bazlı değişken dosyası seçiliyor
           terraform plan \
+            -var-file="${{ needs.setup.outputs.environment }}.tfvars" \
             -var="image_tag=${IMAGE_TAG}" \
-            -var="environment=${{ needs.setup.outputs.environment }}" \
             -var="tf_state_bucket=${{ env.TF_STATE_BUCKET }}" \
             -out=tfplan
 
@@ -278,7 +231,7 @@ jobs:
 
       - name: Cleanup Sensitive Files
         if: always()
-        run: rm -f terraform.tfvars tfplan
+        run: rm -f tfplan
 
       - name: Deployment Summary
         run: |
