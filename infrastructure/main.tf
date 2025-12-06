@@ -140,8 +140,8 @@ resource "google_cloud_run_v2_service" "auth_service" {
         }
 
         env {
-            name  = "ALLOWED_ORIGIN"
-            value = var.allowed_origin
+            name  = "ALLOWED_ORIGINS"
+            value = join(",", var.allowed_origins)
         }
     }
     }
