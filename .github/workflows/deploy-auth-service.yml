@@ -197,7 +197,7 @@ jobs:
       - name: Cleanup Orphaned State
         run: |
           export TF_VAR_project_id="${{ needs.build-and-push.outputs.project_id }}"
-          export TF_VAR_region="${{ needs.build-and-push.outputs.region }}"
+          export TF_VAR_region="${{ env.GCP_REGION }}"
           export TF_VAR_environment="${{ needs.setup.outputs.environment }}"
           export TF_VAR_tf_state_bucket="${{ env.TF_STATE_BUCKET }}"
           export TF_VAR_image_tag="temp" # Image tag not critical for import, just needs to exist
