@@ -17,5 +17,5 @@ idle_timeout  = "60"
 allow_public_access = true
 allowed_origins     = ["https://histopathai.com", "https://histopathai.com.tr"]
 cookie_domain       = ""
-log_levels = "info"
-log_format = "json"
+log_levels          = "info"
+log_format          = "json"
