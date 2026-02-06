@@ -58,7 +58,7 @@ type Config struct {
 
 func LoadConfig() *Config {
 	env := getEnv("ENVIRONMENT", "dev")
-	allowedOriginsEnv := getEnv("ALLOWED_ORIGINS", "http://localhost:5173,https://histopathai.com")
+	allowedOriginsEnv := getEnv("ALLOWED_ORIGINS", "https://localhost:5173,https://histopathai.com")
 	allowedOrigins := strings.Split(allowedOriginsEnv, ",")
 	for i := range allowedOrigins {
 		allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
@@ -68,12 +68,12 @@ func LoadConfig() *Config {
 		ProjectID:      getEnv("PROJECT_ID", ""),
 		Region:         getEnv("REGION", ""),
 		ProjectNumber:  getEnv("PROJECT_NUMBER", ""),
-		MainServiceURL: getEnv("MAIN_SERVICE_URL", "http://localhost:8081"),
+		MainServiceURL: getEnv("MAIN_SERVICE_URL", "https://localhost:8081"),
 		AllowedOrigins: allowedOrigins,
 		Server: ServerConfig{
-			Port:         getEnv("PORT", "8080"),
+			Port:         getEnv("PORT", "8081"),
 			Environment:  env,
-			BaseURL:      getEnv("BASE_URL", "http://localhost:8080"),
+			BaseURL:      getEnv("BASE_URL", "https://localhost:8081"),
 			ReadTimeout:  getEnvInt("READ_TIMEOUT", 15),
 			WriteTimeout: getEnvInt("WRITE_TIMEOUT", 15),
 			IdleTimeout:  getEnvInt("IDLE_TIMEOUT", 60),
