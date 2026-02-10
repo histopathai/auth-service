@@ -167,7 +167,7 @@ func (msp *MainServiceProxy) modifyResponse(resp *http.Response) error {
 	resp.Header.Del("Access-Control-Allow-Headers")
 	resp.Header.Del("Access-Control-Max-Age")
 
-	if statusCode >= 200 && statusCode < 300 {
+	if statusCode >= 200 && statusCode < 400 {
 		msp.logger.Debug("Proxy response",
 			"status", statusCode,
 			"url", requestURL,
