@@ -146,6 +146,29 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 	h.response.NoContent(c)
 }
 
+// Logout
+// @Summary Logout
+// @Description Revoke current session and clear cookie
+// @Tags Session
+// @Accept json
+// @Produce json
+// @Success 204 "Logged out successfully"
+// @Router /sessions/current [delete]
+func (h *SessionHandler) Logout(c *gin.Context) {
+	// 1. Get session ID from cookie
+	sessionID, err := c.Cookie(h.config.Cookie.Name)
+	if err == nil && sessionID != "" {
+		// 2. Try to revoke session (ignore errors)
+		_ = h.sessionService.RevokeSession(c.Request.Context(), sessionID)
+	}
+
+	// 3. Always clear cookie
+	h.clearSessionCookie(c)
+
+	// 4. Return success
+	h.response.NoContent(c)
+}
+
 // GetCurrentSession
 // @Summary Get Current Session
 // @Description Get details of the current session
@@ -158,7 +181,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 // @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /sessions/current [get]
 func (h *SessionHandler) GetCurrentSession(c *gin.Context) {
-	sessionID, err := c.Cookie("session_id")
+	sessionID, err := c.Cookie(h.config.Cookie.Name)
 	if err != nil {
 		h.handleError(c, errors.NewUnauthorizedError("No active session"))
 		return
