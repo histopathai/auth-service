@@ -41,7 +41,12 @@ func NewRouter(config *RouterConfig, appConfig *config.Config) (*Router, error) 
 	healthHandler := handler.NewHealthHandler(config.Logger)
 	sessionHandler := handler.NewSessionHandler(config.SessionService, config.AuthService, appConfig, config.Logger)
 
-	authMiddleware := middleware.NewAuthMiddleware(*config.AuthService, config.SessionService)
+	authMiddleware := middleware.NewAuthMiddleware(
+		*config.AuthService,
+		config.SessionService,
+		appConfig,
+		config.Logger,
+	)
 
 	// Pass config to proxy
 	mainProxy, err := proxy.NewMainServiceProxy(
@@ -128,6 +133,8 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 		{
 			sessions.PUT("", r.sessionHandler.CreateSession)
 
+			sessions.DELETE("/current", r.sessionHandler.Logout)
+
 			authenticated := sessions.Group("")
 			authenticated.Use(r.authMiddleware.RequireSession())
 			authenticated.Use(r.authMiddleware.RequireStatus(model.StatusActive))
@@ -137,7 +144,6 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				authenticated.PUT("/revoke-all", r.sessionHandler.RevokeAllMySessions)
 				authenticated.PUT("/:session_id/extend", r.sessionHandler.ExtendSession)
 				authenticated.GET("/current", r.sessionHandler.GetCurrentSession)
-				authenticated.DELETE("/current", r.sessionHandler.RevokeSession)
 				authenticated.DELETE("/:session_id", r.sessionHandler.RevokeSession)
 
 			}
