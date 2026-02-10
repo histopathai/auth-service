@@ -1,23 +1,34 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
+	"github.com/histopathai/auth-service/pkg/config"
 )
 
 type AuthMiddleware struct {
 	authService    service.AuthService
 	sessionService *service.SessionService
+	config         *config.Config
+	logger         *slog.Logger
 }
 
-func NewAuthMiddleware(authService service.AuthService, sessionService *service.SessionService) *AuthMiddleware {
+func NewAuthMiddleware(
+	authService service.AuthService,
+	sessionService *service.SessionService,
+	config *config.Config,
+	logger *slog.Logger,
+) *AuthMiddleware {
 	return &AuthMiddleware{
 		authService:    authService,
 		sessionService: sessionService,
+		config:         config,
+		logger:         logger,
 	}
 }
 
@@ -86,7 +97,7 @@ func (m *AuthMiddleware) authenticateWithBearer(c *gin.Context, authHeader strin
 
 // authenticateWithSession attempts to authenticate using session cookie
 func (m *AuthMiddleware) authenticateWithSession(c *gin.Context) (*model.User, string, error) {
-	sessionID, err := c.Cookie("session_id")
+	sessionID, err := c.Cookie(m.config.Cookie.Name)
 	if err != nil || sessionID == "" {
 		return nil, "", err
 	}
@@ -129,6 +140,11 @@ func (m *AuthMiddleware) RequireSession() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, sessionID, err := m.authenticateWithSession(c)
 		if err != nil {
+			m.logger.Warn("Session authentication failed",
+				"error", err,
+				"path", c.Request.URL.Path,
+				"ip", c.ClientIP(),
+			)
 			respondUnauthorized(c, "invalid_session", "Session is invalid or expired", nil)
 			return
 		}
