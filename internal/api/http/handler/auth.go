@@ -188,6 +188,34 @@ func (h *AuthHandler) GetProfile(c *gin.Context) {
 	h.response.Success(c, http.StatusOK, response)
 }
 
+// GetUserPublicInfo
+// @Summary Get User Public Info
+// @Description Get a user's public display name by their ID. Accessible by any active user.
+// @Tags Users
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User ID"
+// @Success 200 {object} response.PublicUserResponse "User public info"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Router /users/{user_id} [get]
+func (h *AuthHandler) GetUserPublicInfo(c *gin.Context) {
+	targetUserID := c.Param("user_id")
+
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), targetUserID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response := dtoResponse.PublicUserResponse{
+		UserID:      user.UserID,
+		DisplayName: user.DisplayName,
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
 func mapToUserResponse(user *model.User) dtoResponse.UserResponse {
 	return dtoResponse.UserResponse{
 		UserID:        user.UserID,

@@ -128,6 +128,14 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			user.DELETE("/account", r.authHandler.DeleteAccount)
 		}
 
+			// Public user info routes (any active user can look up display name by ID)
+			users := v1.Group("/users")
+			users.Use(r.authMiddleware.RequireAuthOrSession())
+			users.Use(r.authMiddleware.RequireStatus(model.StatusActive))
+			{
+				users.GET("/:user_id", r.authHandler.GetUserPublicInfo)
+			}
+
 		// Session routes
 		sessions := v1.Group("/sessions")
 		{
@@ -204,6 +212,7 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			"GET /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
 			"DELETE /api/v1/admin/users/:user_id/sessions (admin + session or bearer)",
 			"DELETE /api/v1/admin/sessions/:session_id (admin + session or bearer)",
+			"GET /api/v1/users/:user_id (auth or session)",
 			"ANY /api/v1/proxy/*proxyPath (auth or session)",
 			"GET /api/v1/health (public)",
 			"GET /api/v1/health/ready (public)",
