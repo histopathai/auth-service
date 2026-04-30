@@ -15,7 +15,7 @@ idle_timeout  = "60"
 
 # Access & Security
 allow_public_access = true
-allowed_origins     = ["https://histopathai.com", "https://histopathai.com.tr"]
+allowed_origins     = ["http://localhost:3000", "http://localhost:5173", "https://localhost:5173", "https://histopathai.com", "https://histopathai.com.tr"]
 cookie_domain       = ""
 log_levels          = "info"
 log_format          = "json"
