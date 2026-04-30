@@ -13,7 +13,7 @@ write_timeout = "15"
 idle_timeout  = "60"
 
 allow_public_access = true
-allowed_origins     = ["http://localhost:5173", "https://localhost:5173"]
+allowed_origins     = ["http://localhost:3000", "http://localhost:5173", "https://localhost:5173"]
 cookie_domain       = ""
 
 # Logging
