@@ -147,10 +147,20 @@ func isGCSProxyPath(path string) bool {
 	}
 
 	firstSegment := parts[0]
-	if len(firstSegment) >= 32 && strings.Contains(firstSegment, "-") {
 
-		dashCount := strings.Count(firstSegment, "-")
-		return dashCount == 4
+	// UUID format: 8-4-4-4-12 (36 chars, 4 dashes)
+	if len(firstSegment) >= 32 && strings.Contains(firstSegment, "-") {
+		return strings.Count(firstSegment, "-") == 4
+	}
+
+	// 20-char alphanumeric format used by the ingest pipeline
+	if len(firstSegment) == 20 {
+		for _, c := range firstSegment {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+				return false
+			}
+		}
+		return true
 	}
 
 	return false
