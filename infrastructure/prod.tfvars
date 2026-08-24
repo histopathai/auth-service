@@ -19,3 +19,4 @@ allowed_origins     = ["http://localhost:3000", "http://localhost:5173", "https:
 cookie_domain       = ""
 log_levels          = "info"
 log_format          = "json"
+readers_group_email = "histopathai-readers@histopathai.com"

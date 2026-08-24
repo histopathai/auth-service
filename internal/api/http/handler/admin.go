@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
 	dtoResponse "github.com/histopathai/auth-service/internal/api/http/dto/response"
+	"github.com/histopathai/auth-service/internal/domain/model"
 	"github.com/histopathai/auth-service/internal/service"
 	"github.com/histopathai/auth-service/internal/shared/errors"
 	"github.com/histopathai/auth-service/internal/shared/query"
@@ -281,4 +282,111 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 	}
 
 	h.response.Success(c, http.StatusOK, response)
+}
+
+// GrantDataAccess
+// @Summary Grant research data access
+// @Description Adds the user's email to the readers group, which carries read-only
+// @Description access to Firestore metadata and the processed bucket from outside the
+// @Description platform (notebooks, dev-ingestor). Independent of the platform role.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Success 200 {object} response.UserActionResponse "Data access granted"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/data-access [post]
+func (h *AdminHandler) GrantDataAccess(c *gin.Context) {
+	h.setDataAccess(c, true)
+}
+
+// RevokeDataAccess
+// @Summary Revoke research data access
+// @Description Removes the user's email from the readers group. Access stops as soon
+// @Description as the membership change propagates; no IAM policy is touched.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Success 200 {object} response.UserActionResponse "Data access revoked"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/data-access [delete]
+func (h *AdminHandler) RevokeDataAccess(c *gin.Context) {
+	h.setDataAccess(c, false)
+}
+
+func (h *AdminHandler) setDataAccess(c *gin.Context, grant bool) {
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
+		return
+	}
+
+	var (
+		user *model.User
+		err  error
+	)
+	if grant {
+		user, err = h.authService.GrantDataAccess(c.Request.Context(), userID)
+	} else {
+		user, err = h.authService.RevokeDataAccess(c.Request.Context(), userID)
+	}
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	message := "Data access revoked successfully"
+	if grant {
+		message = "Data access granted successfully"
+	}
+
+	h.response.Success(c, http.StatusOK, dtoResponse.UserActionResponse{
+		Message: message,
+		User:    mapToUserResponse(user),
+	})
+}
+
+// GetDataAccess
+// @Summary Read research data access state
+// @Description Re-reads the readers group and returns the authoritative state,
+// @Description repairing the stored flag when someone edited the group directly.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Success 200 {object} response.UserDetailResponse "Current data access state"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/data-access [get]
+func (h *AdminHandler) GetDataAccess(c *gin.Context) {
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
+		return
+	}
+
+	user, err := h.authService.SyncDataAccess(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	h.response.Success(c, http.StatusOK, dtoResponse.UserDetailResponse{
+		UserResponse: mapToUserResponse(user),
+	})
 }

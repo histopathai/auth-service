@@ -92,6 +92,13 @@ resource "google_cloud_run_v2_service" "auth_service" {
         value = var.environment
       }
 
+      # Google group whose members hold read-only access to the research data.
+      # Empty disables the /admin/users/:id/data-access endpoints.
+      env {
+        name  = "READERS_GROUP_EMAIL"
+        value = var.readers_group_email
+      }
+
       env {
         name  = "GIN_MODE"
         value = var.environment == "prod" ? "release" : "debug"

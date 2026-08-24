@@ -44,16 +44,19 @@ type TLSConfig struct {
 }
 
 type Config struct {
-	ProjectID      string
-	Region         string
-	ProjectNumber  string
-	MainServiceURL string
-	AllowedOrigins []string
-	Server         ServerConfig
-	Cookie         CookieConfig
-	Security       SecurityConfig
-	TLS            TLSConfig
-	Logging        LoggingConfig
+	ProjectID string
+	// ReadersGroupEmail is the Google group whose members hold read-only access
+	// to the research data. Empty disables the data-access endpoints.
+	ReadersGroupEmail string
+	Region            string
+	ProjectNumber     string
+	MainServiceURL    string
+	AllowedOrigins    []string
+	Server            ServerConfig
+	Cookie            CookieConfig
+	Security          SecurityConfig
+	TLS               TLSConfig
+	Logging           LoggingConfig
 }
 
 func LoadConfig() *Config {
@@ -65,11 +68,12 @@ func LoadConfig() *Config {
 	}
 
 	cfg := &Config{
-		ProjectID:      getEnv("PROJECT_ID", ""),
-		Region:         getEnv("REGION", ""),
-		ProjectNumber:  getEnv("PROJECT_NUMBER", ""),
-		MainServiceURL: getEnv("MAIN_SERVICE_URL", "https://localhost:8081"),
-		AllowedOrigins: allowedOrigins,
+		ProjectID:         getEnv("PROJECT_ID", ""),
+		ReadersGroupEmail: getEnv("READERS_GROUP_EMAIL", ""),
+		Region:            getEnv("REGION", ""),
+		ProjectNumber:     getEnv("PROJECT_NUMBER", ""),
+		MainServiceURL:    getEnv("MAIN_SERVICE_URL", "https://localhost:8081"),
+		AllowedOrigins:    allowedOrigins,
 		Server: ServerConfig{
 			Port:         getEnv("PORT", "8081"),
 			Environment:  env,

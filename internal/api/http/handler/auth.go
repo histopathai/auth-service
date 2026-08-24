@@ -3,6 +3,7 @@ package handler
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	dtoRequest "github.com/histopathai/auth-service/internal/api/http/dto/request"
@@ -225,7 +226,18 @@ func mapToUserResponse(user *model.User) dtoResponse.UserResponse {
 		Role:          string(user.Role),
 		AdminApproved: user.AdminApproved,
 		ApprovalDate:  &user.ApprovalDate,
+		DataAccess:    user.DataAccess,
+		DataAccessAt:  dataAccessAt(user),
 		CreatedAt:     user.CreatedAt,
 		UpdatedAt:     user.UpdatedAt,
 	}
+}
+
+// dataAccessAt omits the timestamp when data access was never granted, so the
+// field disappears from the JSON instead of showing a zero time.
+func dataAccessAt(user *model.User) *time.Time {
+	if user.DataAccessAt.IsZero() {
+		return nil
+	}
+	return &user.DataAccessAt
 }

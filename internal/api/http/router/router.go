@@ -128,13 +128,13 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			user.DELETE("/account", r.authHandler.DeleteAccount)
 		}
 
-			// Public user info routes (any active user can look up display name by ID)
-			users := v1.Group("/users")
-			users.Use(r.authMiddleware.RequireAuthOrSession())
-			users.Use(r.authMiddleware.RequireStatus(model.StatusActive))
-			{
-				users.GET("/:user_id", r.authHandler.GetUserPublicInfo)
-			}
+		// Public user info routes (any active user can look up display name by ID)
+		users := v1.Group("/users")
+		users.Use(r.authMiddleware.RequireAuthOrSession())
+		users.Use(r.authMiddleware.RequireStatus(model.StatusActive))
+		{
+			users.GET("/:user_id", r.authHandler.GetUserPublicInfo)
+		}
 
 		// Session routes
 		sessions := v1.Group("/sessions")
@@ -170,7 +170,15 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				users.POST("/:user_id/approve", r.adminHandler.ApproveUser)
 				users.POST("/:user_id/suspend", r.adminHandler.SuspendUser)
 				users.POST("/:user_id/make-admin", r.adminHandler.MakeAdmin)
+				users.DELETE("/:user_id", r.adminHandler.DeleteUser)
+				// Deprecated: the frontend calls DELETE above. Kept so any other
+				// caller does not break.
 				users.PUT("/:user_id/delete", r.adminHandler.DeleteUser)
+
+				// Research data access — group membership, not a platform role.
+				users.GET("/:user_id/data-access", r.adminHandler.GetDataAccess)
+				users.POST("/:user_id/data-access", r.adminHandler.GrantDataAccess)
+				users.DELETE("/:user_id/data-access", r.adminHandler.RevokeDataAccess)
 				users.GET("/:user_id/sessions", r.sessionHandler.ListUserSessions)
 				users.DELETE("/:user_id/sessions", r.sessionHandler.RevokeAllUserSessions)
 
@@ -206,6 +214,10 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			"GET /api/v1/admin/users (admin + session or bearer)",
 			"GET /api/v1/admin/users/:user_id (admin + session or bearer)",
 			"POST /api/v1/admin/users/:user_id/approve (admin + session or bearer)",
+			"GET /api/v1/admin/users/:user_id/data-access (admin + session or bearer)",
+			"POST /api/v1/admin/users/:user_id/data-access (admin + session or bearer)",
+			"DELETE /api/v1/admin/users/:user_id/data-access (admin + session or bearer)",
+			"DELETE /api/v1/admin/users/:user_id (admin + session or bearer)",
 			"POST /api/v1/admin/users/:user_id/suspend (admin + session or bearer)",
 			"POST /api/v1/admin/users/:user_id/make-admin (admin + session or bearer)",
 			"PUT /api/v1/admin/users/:user_id/delete (admin + session or bearer)",
