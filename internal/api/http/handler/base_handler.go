@@ -55,16 +55,29 @@ func NewBaseHandler(logger *slog.Logger) *BaseHandler {
 }
 
 func (bh *BaseHandler) handleError(c *gin.Context, err error) {
+	// No middleware sets request_id, so this is usually absent. The unchecked
+	// assertion that used to be here panicked on every error path, turning
+	// every handled error into a recovered panic and a generic 500.
 	requestID, _ := c.Get("request_id")
+	reqID, _ := requestID.(string)
+
 	var customErr *errors.Err
 
 	if stderr.As(err, &customErr) {
 		statusCode, errResponse := bh.mapCustomError(customErr)
 
+		// The wrapped error carries the actual cause (a rejected API call, a
+		// failed write); without it the log says only what we were attempting.
+		cause := ""
+		if customErr.Err != nil {
+			cause = customErr.Err.Error()
+		}
+
 		bh.logger.Error("Request failed",
-			slog.String("request_id", requestID.(string)),
+			slog.String("request_id", reqID),
 			slog.String("error_type", string(customErr.Type)),
 			slog.String("message", customErr.Message),
+			slog.String("cause", cause),
 			slog.String("path", c.Request.URL.Path),
 		)
 		c.JSON(statusCode, errResponse)
@@ -72,7 +85,7 @@ func (bh *BaseHandler) handleError(c *gin.Context, err error) {
 	}
 
 	bh.logger.Error("Request failed",
-		slog.String("request_id", requestID.(string)),
+		slog.String("request_id", reqID),
 		slog.String("error_type", "unknown"),
 		slog.String("message", err.Error()),
 		slog.String("path", c.Request.URL.Path),
