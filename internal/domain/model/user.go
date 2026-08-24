@@ -25,6 +25,10 @@ type UpdateUser struct {
 	Role          *UserRole
 	AdminApproved *bool
 	ApprovalDate  *time.Time
+	// DataAccess mirrors membership of the readers group. The group is the
+	// source of truth; this field is a cached view of it for listing users.
+	DataAccess   *bool
+	DataAccessAt *time.Time
 }
 
 type User struct {
@@ -37,6 +41,14 @@ type User struct {
 	Role          UserRole
 	AdminApproved bool
 	ApprovalDate  time.Time
+
+	// DataAccess reports whether this user is in the readers group, which is
+	// what grants read-only access to Firestore metadata and the processed
+	// bucket from outside the platform (notebooks, dev-ingestor). It is
+	// independent of Role: a platform "viewer" need not have data access, and
+	// data access does not imply any platform privilege.
+	DataAccess   bool
+	DataAccessAt time.Time
 }
 
 func (u *User) GetID() string {

@@ -42,6 +42,8 @@ type UserResponse struct {
 	Role          string     `json:"role" example:"user"`
 	AdminApproved bool       `json:"admin_approved" example:"true"`
 	ApprovalDate  *time.Time `json:"approval_date,omitempty" example:"2023-10-01T12:00:00Z"`
+	DataAccess    bool       `json:"data_access" example:"false"`
+	DataAccessAt  *time.Time `json:"data_access_at,omitempty" example:"2023-10-01T12:00:00Z"`
 	CreatedAt     time.Time  `json:"created_at" example:"2023-09-01T12:00:00Z"`
 	UpdatedAt     time.Time  `json:"updated_at" example:"2023-09-15T12:00:00Z"`
 }

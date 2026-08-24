@@ -18,6 +18,8 @@ func UserToFirestoreMap(user *model.User) map[string]interface{} {
 		"role":           string(user.Role),
 		"admin_approved": user.AdminApproved,
 		"approval_date":  user.ApprovalDate,
+		"data_access":    user.DataAccess,
+		"data_access_at": user.DataAccessAt,
 	}
 }
 
@@ -42,6 +44,15 @@ func UserFromFirestoreDoc(doc *firestore.DocumentSnapshot) (*model.User, error) 
 			user.AdminApproved = value.(bool)
 		case "approval_date":
 			user.ApprovalDate = value.(time.Time)
+		case "data_access":
+			// Absent on documents written before this field existed.
+			if b, ok := value.(bool); ok {
+				user.DataAccess = b
+			}
+		case "data_access_at":
+			if t, ok := value.(time.Time); ok {
+				user.DataAccessAt = t
+			}
 		}
 	}
 	user.UserID = doc.Ref.ID
@@ -65,6 +76,12 @@ func UpdateUserToFirestoreUpdates(update *model.UpdateUser) []firestore.Update {
 	}
 	if update.ApprovalDate != nil {
 		updates = append(updates, firestore.Update{Path: "approval_date", Value: *update.ApprovalDate})
+	}
+	if update.DataAccess != nil {
+		updates = append(updates, firestore.Update{Path: "data_access", Value: *update.DataAccess})
+	}
+	if update.DataAccessAt != nil {
+		updates = append(updates, firestore.Update{Path: "data_access_at", Value: *update.DataAccessAt})
 	}
 
 	updates = append(updates, firestore.Update{Path: "updated_at", Value: time.Now()})

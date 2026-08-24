@@ -14,13 +14,102 @@ import (
 type AuthService struct {
 	authRepo repository.AuthRepository
 	userRepo repository.UserRepository
+	// directory is nil when no readers group is configured; the data-access
+	// operations then report a clear error instead of failing obscurely.
+	directory repository.DirectoryRepository
 }
 
-func NewAuthService(authrepo repository.AuthRepository, userRepo repository.UserRepository) *AuthService {
+func NewAuthService(
+	authrepo repository.AuthRepository,
+	userRepo repository.UserRepository,
+	directory repository.DirectoryRepository,
+) *AuthService {
 	return &AuthService{
-		authRepo: authrepo,
-		userRepo: userRepo,
+		authRepo:  authrepo,
+		userRepo:  userRepo,
+		directory: directory,
 	}
+}
+
+// ── data access ───────────────────────────────────────────────────────────────
+//
+// Read-only access to the research data is carried by membership of a Google
+// group that the IAM policy binds once. Granting is therefore a group
+// membership change, not an IAM change, and it is deliberately independent of
+// the platform role.
+
+func (s *AuthService) GrantDataAccess(ctx context.Context, userID string) (*model.User, error) {
+	return s.setDataAccess(ctx, userID, true)
+}
+
+func (s *AuthService) RevokeDataAccess(ctx context.Context, userID string) (*model.User, error) {
+	return s.setDataAccess(ctx, userID, false)
+}
+
+func (s *AuthService) setDataAccess(ctx context.Context, userID string, grant bool) (*model.User, error) {
+	if s.directory == nil {
+		return nil, errors.NewInternalError(
+			"data access is not configured: set READERS_GROUP_EMAIL", nil)
+	}
+
+	user, err := s.userRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if user.Email == "" {
+		return nil, errors.NewValidationError("user has no email address",
+			map[string]interface{}{"userID": userID})
+	}
+
+	// The group is changed first: if it fails the stored flag stays as it was,
+	// so the record never claims access the group does not actually carry.
+	if grant {
+		err = s.directory.AddMember(ctx, user.Email)
+	} else {
+		err = s.directory.RemoveMember(ctx, user.Email)
+	}
+	if err != nil {
+		return nil, errors.NewInternalError("failed to update group membership", err)
+	}
+
+	now := time.Now()
+	updates := &model.UpdateUser{DataAccess: &grant, DataAccessAt: &now}
+	if err := s.userRepo.Update(ctx, userID, updates); err != nil {
+		return nil, err
+	}
+
+	user.DataAccess = grant
+	user.DataAccessAt = now
+	return user, nil
+}
+
+// SyncDataAccess re-reads the group and returns the authoritative answer,
+// repairing the stored flag when the two have drifted (someone edited the group
+// directly in the admin console).
+func (s *AuthService) SyncDataAccess(ctx context.Context, userID string) (*model.User, error) {
+	if s.directory == nil {
+		return nil, errors.NewInternalError(
+			"data access is not configured: set READERS_GROUP_EMAIL", nil)
+	}
+
+	user, err := s.userRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	member, err := s.directory.HasMember(ctx, user.Email)
+	if err != nil {
+		return nil, errors.NewInternalError("failed to read group membership", err)
+	}
+
+	if member != user.DataAccess {
+		updates := &model.UpdateUser{DataAccess: &member}
+		if err := s.userRepo.Update(ctx, userID, updates); err != nil {
+			return nil, err
+		}
+		user.DataAccess = member
+	}
+	return user, nil
 }
 
 func (s *AuthService) RegisterUser(ctx context.Context, register *model.ConfirmRegisterUser) (*model.User, error) {
@@ -87,6 +176,24 @@ func (s *AuthService) ChangeUserPassword(ctx context.Context, userID string, new
 }
 
 func (s *AuthService) DeleteUser(ctx context.Context, userID string) error {
+	// Data access outlives the platform account: the readers group grants GCP
+	// read access and knows nothing about this deletion. Remove the membership
+	// first, and refuse to delete if that fails — an orphaned group member keeps
+	// reading the data with no account left to audit it against.
+	if s.directory != nil {
+		user, err := s.userRepo.GetByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if user.Email != "" {
+			if err := s.directory.RemoveMember(ctx, user.Email); err != nil {
+				return errors.NewInternalError(
+					"refusing to delete the user: failed to remove them from the readers group, "+
+						"which would leave their data access in place", err)
+			}
+		}
+	}
+
 	if err := s.userRepo.Delete(ctx, userID); err != nil {
 		return errors.NewInternalError("failed to delete user from database", err)
 	}

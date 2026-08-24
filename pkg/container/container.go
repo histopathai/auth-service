@@ -11,6 +11,7 @@ import (
 	"github.com/histopathai/auth-service/internal/api/http/router"
 	"github.com/histopathai/auth-service/internal/domain/repository"
 	firebaseAuth "github.com/histopathai/auth-service/internal/infrastructure/auth/firebase"
+	"github.com/histopathai/auth-service/internal/infrastructure/identity"
 	firestoreRepo "github.com/histopathai/auth-service/internal/infrastructure/storage/firestore"
 	memoryRepo "github.com/histopathai/auth-service/internal/infrastructure/storage/memory"
 	"github.com/histopathai/auth-service/internal/service"
@@ -28,9 +29,10 @@ type Container struct {
 	FirestoreClient *firestore.Client
 
 	//Repositories
-	AuthRepository    repository.AuthRepository
-	UserRepository    repository.UserRepository
-	SessionRepository repository.SessionRepository
+	AuthRepository      repository.AuthRepository
+	UserRepository      repository.UserRepository
+	SessionRepository   repository.SessionRepository
+	DirectoryRepository repository.DirectoryRepository
 
 	//Services
 	AuthService    *service.AuthService
@@ -99,13 +101,33 @@ func (c *Container) initRepositories(ctx context.Context) error {
 	c.UserRepository = firestoreRepo.NewFirestoreUserRepository(c.FirestoreClient, "users")
 
 	c.SessionRepository = memoryRepo.NewInMemorySessionRepository(memoryRepo.DefaultMaxSessionsPerUser)
+
+	// The readers group is optional: without it the service starts normally and
+	// only the data-access endpoints report that they are not configured.
+	if c.Config.ReadersGroupEmail == "" {
+		c.Logger.Warn("READERS_GROUP_EMAIL is not set — data access endpoints are disabled")
+	} else {
+		// Deliberately non-fatal: this service also serves login and session
+		// verification. A misconfigured readers group must never take
+		// authentication down with it — the data-access endpoints report that
+		// they are unavailable and everything else keeps working.
+		directory, err := identity.NewGroupDirectory(ctx, c.Config.ReadersGroupEmail)
+		if err != nil {
+			c.Logger.Error("Group directory unavailable — data access endpoints disabled",
+				"group", c.Config.ReadersGroupEmail, "error", err)
+		} else {
+			c.DirectoryRepository = directory
+			c.Logger.Info("Group directory initialized", "group", c.Config.ReadersGroupEmail)
+		}
+	}
+
 	c.Logger.Info("Repositories initialized")
 	return nil
 }
 
 func (c *Container) initServices(ctx context.Context) error {
 
-	c.AuthService = service.NewAuthService(c.AuthRepository, c.UserRepository)
+	c.AuthService = service.NewAuthService(c.AuthRepository, c.UserRepository, c.DirectoryRepository)
 
 	c.SessionService = service.NewSessionService(c.SessionRepository, *c.AuthService, c.Logger.Logger)
 	c.Logger.Info("Services initialized")

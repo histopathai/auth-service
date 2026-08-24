@@ -19,3 +19,4 @@ cookie_domain       = ""
 # Logging
 log_levels = "debug"
 log_format = "text"
+readers_group_email = "histopathai-readers@histopathai.com"

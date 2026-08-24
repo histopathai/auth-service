@@ -10,4 +10,6 @@ const (
 	FieldUserRole          = "Role"
 	FieldUserAdminApproved = "AdminApproved"
 	FieldUserApprovalDate  = "ApprovalDate"
+	FieldUserDataAccess    = "DataAccess"
+	FieldUserDataAccessAt  = "DataAccessAt"
 )

@@ -127,3 +127,9 @@ variable "tf_state_bucket" {
   description = "GCS bucket name for terraform state"
   type        = string
 }
+
+variable "readers_group_email" {
+  description = "Google group carrying read-only access to the research data. The Cloud Run service account must be a MANAGER of this group (set in the Workspace admin console — no GCP IAM role grants this)."
+  type        = string
+  default     = ""
+}
