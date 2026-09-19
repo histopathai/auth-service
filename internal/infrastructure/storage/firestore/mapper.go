@@ -39,7 +39,7 @@ func UserFromFirestoreDoc(doc *firestore.DocumentSnapshot) (*model.User, error) 
 		case "status":
 			user.Status = model.UserStatus(value.(string))
 		case "role":
-			user.Role = model.UserRole(value.(string))
+			user.Role = model.UserRole(value.(string)).Normalize()
 		case "admin_approved":
 			user.AdminApproved = value.(bool)
 		case "approval_date":
