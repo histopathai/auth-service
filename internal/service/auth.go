@@ -209,7 +209,11 @@ func (s *AuthService) GetUserByUserID(ctx context.Context, userID string) (*mode
 	return s.userRepo.GetByUserID(ctx, userID)
 }
 
-func (s *AuthService) ApproveUser(ctx context.Context, userID string) error {
+// ApproveUser activates a pending or suspended user. role is the group the
+// admin puts a new user in, required while they have none; it is ignored for
+// anyone who already has a role. Admin is never granted here — that is
+// SetUserRole, a separate and deliberate step.
+func (s *AuthService) ApproveUser(ctx context.Context, userID string, role model.UserRole) error {
 
 	// 1. Retrieve the user by GetByUserID
 	user, err := s.userRepo.GetByUserID(ctx, userID)
@@ -226,9 +230,17 @@ func (s *AuthService) ApproveUser(ctx context.Context, userID string) error {
 		return errors.NewConflictError("user is already active and approved", detail)
 	}
 
+	// role only fills an empty slot. Someone who already has a role keeps it,
+	// whatever the request says: a browser on the old bundle sends "user" with
+	// every approval, and that must not turn a suspended datascientist into a
+	// pathologist on reactivation.
 	targetRole := user.Role
 	if user.Role == model.RoleUnassigned {
-		targetRole = model.RoleUser
+		if role != model.RolePathologist && role != model.RoleDatascientist {
+			return errors.NewValidationError("approving this user needs a role: pathologist or datascientist",
+				map[string]interface{}{"userID": userID, "role": role})
+		}
+		targetRole = role
 	}
 
 	// 3. Update user status to active, set role and approval date
@@ -292,36 +304,45 @@ func (s *AuthService) ActivateUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (s *AuthService) PromoteUserToAdmin(ctx context.Context, userID string) error {
+// SetUserRole moves an active user to another group. actorID is the admin
+// making the change: nobody changes their own role, so the last admin cannot
+// lock the platform out of its admin panel by demoting themselves.
+func (s *AuthService) SetUserRole(ctx context.Context, actorID, userID string, role model.UserRole) error {
+	if !role.IsAssignable() {
+		return errors.NewValidationError("role must be admin, pathologist or datascientist",
+			map[string]interface{}{"role": role})
+	}
+	if actorID == userID {
+		return errors.NewValidationError("you cannot change your own role",
+			map[string]interface{}{"userID": userID})
+	}
+
 	user, err := s.userRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		return err
 	}
-
-	// 2. Ensure user is activated
 	if user.Status != model.StatusActive {
 		detail := map[string]interface{}{
 			"userID": userID,
 			"status": user.Status,
 		}
-		return errors.NewConflictError("user is not active and cannot be promoted to admin", detail)
+		return errors.NewConflictError("user is not active; approve them first", detail)
 	}
-
-	// 3. Check if user is already an admin
-	if user.Role == model.RoleAdmin {
+	if user.Role == role {
 		detail := map[string]interface{}{
 			"userID": userID,
 			"role":   user.Role,
 		}
-		return errors.NewConflictError("user is already an admin", detail)
+		return errors.NewConflictError("user already has this role", detail)
 	}
 
-	// 4. Update user role to admin
-	err = s.SetUserRoleAndStatus(ctx, userID, model.RoleAdmin, user.Status, user.AdminApproved)
-	if err != nil {
-		return err
-	}
-	return nil
+	// Only the role: status, approval and its date stay as they are.
+	return s.userRepo.Update(ctx, userID, &model.UpdateUser{Role: &role})
+}
+
+// PromoteUserToAdmin is SetUserRole(admin), kept for the make-admin endpoint.
+func (s *AuthService) PromoteUserToAdmin(ctx context.Context, actorID, userID string) error {
+	return s.SetUserRole(ctx, actorID, userID, model.RoleAdmin)
 }
 
 func (s *AuthService) SetUserRoleAndStatus(ctx context.Context, userID string, role model.UserRole, status model.UserStatus, adminApproved bool) error {

@@ -169,6 +169,8 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 				users.GET("/:user_id", r.adminHandler.GetUser)
 				users.POST("/:user_id/approve", r.adminHandler.ApproveUser)
 				users.POST("/:user_id/suspend", r.adminHandler.SuspendUser)
+				users.PUT("/:user_id/role", r.adminHandler.SetRole)
+				// Deprecated: SetRole with role "admin". Kept for the old bundle.
 				users.POST("/:user_id/make-admin", r.adminHandler.MakeAdmin)
 				users.DELETE("/:user_id", r.adminHandler.DeleteUser)
 				// Deprecated: the frontend calls DELETE above. Kept so any other

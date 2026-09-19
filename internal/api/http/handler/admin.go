@@ -38,7 +38,7 @@ func NewAdminHandler(authService service.AuthService, logger *slog.Logger) *Admi
 // @Param sort_by query string false "Sort field" default(created_at) Enums(created_at, updated_at, email, display_name)
 // @Param sort_order query string false "Sort direction" default(desc) Enums(asc, desc)
 // @Param status query string false "Filter by status" Enums(pending, active, suspended)
-// @Param role query string false "Filter by role" Enums(user, admin)
+// @Param role query string false "Filter by role" Enums(admin, pathologist, datascientist, unassigned)
 // @Param search query string false "Search in email and display name"
 // @Success 200 {object} response.UserListResponse "Users retrieved successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid request"
@@ -134,8 +134,9 @@ func (h *AdminHandler) GetUser(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param user_id path string true "User UserID"
+// @Param request body request.ApproveUserRequest false "Group for a newly approved user; omit when reactivating"
 // @Success 200 {object} response.UserDetailResponse "User approved successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid UserID"
+// @Failure 400 {object} response.ErrorResponse "Invalid UserID or role"
 // @Failure 401 {object} response.ErrorResponse "Unauthorized"
 // @Failure 403 {object} response.ErrorResponse "Forbidden"
 // @Failure 404 {object} response.ErrorResponse "User not found"
@@ -148,7 +149,16 @@ func (h *AdminHandler) ApproveUser(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.ApproveUser(c.Request.Context(), userID)
+	// Reactivating a suspended user posts no body at all.
+	var req dtoRequest.ApproveUserRequest
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			h.handleError(c, errors.NewValidationError("Invalid request body", nil))
+			return
+		}
+	}
+
+	err := h.authService.ApproveUser(c.Request.Context(), userID, model.UserRole(req.Role).Normalize())
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -230,7 +240,7 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.PromoteUserToAdmin(c.Request.Context(), userID)
+	err := h.authService.PromoteUserToAdmin(c.Request.Context(), c.GetString("user_id"), userID)
 	if err != nil {
 		h.handleError(c, err)
 		return
@@ -243,6 +253,55 @@ func (h *AdminHandler) MakeAdmin(c *gin.Context) {
 
 	response := dtoResponse.UserActionResponse{
 		Message: "User granted admin role successfully",
+		User:    mapToUserResponse(user),
+	}
+
+	h.response.Success(c, http.StatusOK, response)
+}
+
+// SetRole
+// @Summary Change User Role
+// @Description Move an active user to another group (Admin only). Nobody can change their own role.
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param user_id path string true "User UserID"
+// @Param request body request.SetUserRoleRequest true "New role"
+// @Success 200 {object} response.UserActionResponse "User role changed successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid role, or an attempt to change one's own role"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 409 {object} response.ErrorResponse "User is not active, or already has this role"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /admin/users/{user_id}/role [put]
+func (h *AdminHandler) SetRole(c *gin.Context) {
+	userID := c.Param("user_id")
+	if userID == "" {
+		h.handleError(c, errors.NewValidationError("Missing UserID", nil))
+		return
+	}
+
+	var req dtoRequest.SetUserRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, errors.NewValidationError("role must be admin, pathologist or datascientist", nil))
+		return
+	}
+
+	err := h.authService.SetUserRole(c.Request.Context(), c.GetString("user_id"), userID, model.UserRole(req.Role))
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+	user, err := h.authService.GetUserByUserID(c.Request.Context(), userID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	response := dtoResponse.UserActionResponse{
+		Message: "User role changed successfully",
 		User:    mapToUserResponse(user),
 	}
 

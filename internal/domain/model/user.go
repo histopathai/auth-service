@@ -13,11 +13,42 @@ const (
 type UserRole string
 
 const (
-	RoleAdmin      UserRole = "admin"
-	RoleUser       UserRole = "user"
-	RoleViewer     UserRole = "viewer"
-	RoleUnassigned UserRole = "unassigned"
+	RoleAdmin         UserRole = "admin"
+	RolePathologist   UserRole = "pathologist"
+	RoleDatascientist UserRole = "datascientist"
+	RoleUnassigned    UserRole = "unassigned"
 )
+
+// Role names stored before the user groups existed. They are only ever read,
+// through Normalize; nothing writes them any more.
+const (
+	legacyRoleUser   UserRole = "user"
+	legacyRoleViewer UserRole = "viewer"
+)
+
+// Normalize maps a stored role to a current one, so that documents written
+// before the role migration behave correctly without it having run.
+func (r UserRole) Normalize() UserRole {
+	switch r {
+	case legacyRoleUser:
+		return RolePathologist
+	case legacyRoleViewer:
+		return RoleDatascientist
+	default:
+		return r
+	}
+}
+
+// IsAssignable reports whether an admin may give this role to a user.
+// "unassigned" is where registration starts, not something to assign.
+func (r UserRole) IsAssignable() bool {
+	switch r {
+	case RoleAdmin, RolePathologist, RoleDatascientist:
+		return true
+	default:
+		return false
+	}
+}
 
 type UpdateUser struct {
 	DisplayName   *string

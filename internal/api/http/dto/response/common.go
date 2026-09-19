@@ -39,7 +39,7 @@ type UserResponse struct {
 	Email         string     `json:"email" example:"user@example.com"`
 	DisplayName   string     `json:"display_name" example:"John Doe"`
 	Status        string     `json:"status" example:"active"`
-	Role          string     `json:"role" example:"user"`
+	Role          string     `json:"role" example:"pathologist" enums:"admin,pathologist,datascientist,unassigned"`
 	AdminApproved bool       `json:"admin_approved" example:"true"`
 	ApprovalDate  *time.Time `json:"approval_date,omitempty" example:"2023-10-01T12:00:00Z"`
 	DataAccess    bool       `json:"data_access" example:"false"`
