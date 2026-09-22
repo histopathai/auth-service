@@ -72,14 +72,20 @@ func (s *SessionService) ValidateSession(ctx context.Context, sessionID string) 
 		_ = s.sessionRepo.Delete(ctx, sessionID)
 		return nil, errors.NewNotFoundError("session_expired")
 	}
-	session.LastUsedAt = time.Now()
-	session.RequestCount++
 
-	if err := s.sessionRepo.Update(ctx, sessionID, session); err != nil {
+	// Concurrent requests on the same session must not mutate the struct Get
+	// returned: with many requests in flight (e.g. a burst of image/annotation
+	// fetches) that raced on ExpiresAt/LastUsedAt directly and could torn-write
+	// ExpiresAt into a bogus past value, expiring a session mid-use.
+	updated := *session
+	updated.LastUsedAt = time.Now()
+	updated.RequestCount++
+
+	if err := s.sessionRepo.Update(ctx, sessionID, &updated); err != nil {
 		s.logger.Warn("failed to update session usage", "sessionID", sessionID, "error", err)
 	}
 
-	return session, nil
+	return &updated, nil
 }
 
 func (s *SessionService) ExtendSession(ctx context.Context, sessionID string) error {
@@ -88,9 +94,10 @@ func (s *SessionService) ExtendSession(ctx context.Context, sessionID string) er
 		return err
 	}
 
-	session.ExpiresAt = time.Now().Add(DefaultSessionDuration)
+	updated := *session
+	updated.ExpiresAt = time.Now().Add(DefaultSessionDuration)
 
-	if err := s.sessionRepo.Update(ctx, sessionID, session); err != nil {
+	if err := s.sessionRepo.Update(ctx, sessionID, &updated); err != nil {
 		return errors.NewInternalError("failed to extend session", err)
 	}
 

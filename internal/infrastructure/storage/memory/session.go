@@ -83,7 +83,10 @@ func (r *inMemorySessionRepository) Get(ctx context.Context, sessionID string) (
 		return nil, errors.NewNotFoundError("session_expired")
 	}
 
-	return session, nil
+	// Return a copy: the caller must not be able to mutate the stored session
+	// in place without holding r.mutex, or concurrent callers race on it.
+	sessionCopy := *session
+	return &sessionCopy, nil
 }
 
 func (r *inMemorySessionRepository) Update(ctx context.Context, sessionID string, session *model.Session) error {
