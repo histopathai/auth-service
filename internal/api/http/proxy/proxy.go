@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -85,6 +86,12 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		"query", req.URL.RawQuery,
 	)
 
+	if strings.HasPrefix(originalPath, PublicBlindTestPrefix) {
+		// Public blind test invitations keep their path (see PublicHandler).
+		msp.forward(req, originalPath)
+		return
+	}
+
 	trimmed := strings.TrimPrefix(originalPath, "/api/v1/proxy")
 	if trimmed == "" {
 		trimmed = "/"
@@ -108,19 +115,7 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		"new_path", newPath,
 	)
 
-	req.URL.Scheme = msp.targetURL.Scheme
-	req.URL.Host = msp.targetURL.Host
-	req.URL.Path = newPath
-	req.Host = msp.targetURL.Host
-
-	if msp.tokenSource != nil {
-		token, err := msp.tokenSource.Token()
-		if err == nil {
-			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-		} else {
-			msp.logger.Debug("ID token not available (local dev)", "error", err)
-		}
-	}
+	msp.forward(req, newPath)
 
 	if sessionID := req.URL.Query().Get("session"); sessionID != "" {
 		req.Header.Set("X-Session-ID", sessionID)
@@ -138,6 +133,65 @@ func (msp *MainServiceProxy) director(req *http.Request) {
 		"user_id", req.Header.Get("X-User-ID"),
 		"user_role", req.Header.Get("X-User-Role"),
 	)
+}
+
+// forward points req at main-service under newPath, with the service's own ID
+// token (main-service only takes requests from this service).
+func (msp *MainServiceProxy) forward(req *http.Request, newPath string) {
+	req.URL.Scheme = msp.targetURL.Scheme
+	req.URL.Host = msp.targetURL.Host
+	req.URL.Path = newPath
+	req.URL.RawPath = ""
+	req.Host = msp.targetURL.Host
+
+	if msp.tokenSource != nil {
+		token, err := msp.tokenSource.Token()
+		if err == nil {
+			req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+		} else {
+			msp.logger.Debug("ID token not available (local dev)", "error", err)
+		}
+	}
+}
+
+// PublicBlindTestPrefix is the only part of main-service reached without a
+// platform user: blind test invitations, opened from a shared link by people
+// who have no account. main-service checks the invitation token and the
+// participant's own session token itself (header X-Guest-Session).
+const PublicBlindTestPrefix = "/api/v1/public/blind-tests/"
+
+// identityHeaders are what main-service reads as "who is calling"; a public
+// request must not bring them along.
+var identityHeaders = []string{"X-User-ID", "X-User-Role", "X-Session-ID", "Authorization", "Cookie"}
+
+// PublicHandler proxies blind test invitation requests without authenticating
+// a user. Nothing the caller sends can pass for a user: identity headers,
+// cookies and the session query parameter are dropped, and only clean paths
+// under PublicBlindTestPrefix are forwarded, unchanged.
+func (msp *MainServiceProxy) PublicHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		msp.setCORSHeaders(c)
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		p := c.Request.URL.Path
+		if !strings.HasPrefix(p, PublicBlindTestPrefix) || path.Clean(p) != strings.TrimSuffix(p, "/") ||
+			strings.Contains(strings.ToLower(c.Request.URL.RawPath), "%2f") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": "Not found"})
+			return
+		}
+
+		for _, h := range identityHeaders {
+			c.Request.Header.Del(h)
+		}
+		q := c.Request.URL.Query()
+		q.Del("session")
+		c.Request.URL.RawQuery = q.Encode()
+
+		msp.proxy.ServeHTTP(c.Writer, c.Request)
+	}
 }
 
 func isGCSProxyPath(path string) bool {
@@ -277,7 +331,7 @@ func (msp *MainServiceProxy) setCORSHeaders(c *gin.Context) {
 	c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 	c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 	c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, Cookie")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-ID, X-Guest-Session, Cookie")
 	c.Writer.Header().Set("Access-Control-Max-Age", "3600")
 	c.Writer.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
 

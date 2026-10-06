@@ -192,6 +192,10 @@ func (r *Router) Setup(appConfig *config.Config) *gin.Engine {
 			}
 		}
 
+		// Blind test invitations: no platform user; main-service checks the
+		// invitation and the participant's session token (proxy.PublicHandler).
+		v1.Any("/public/blind-tests/*path", r.mainProxy.PublicHandler())
+
 		// Main service proxy routes
 		proxy := v1.Group("/proxy")
 		{
